@@ -2,5 +2,7 @@
   "recommendations": [
     "EditorConfig.EditorConfig",
     "James-Yu.latex-workshop",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
   ],
 }
