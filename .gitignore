@@ -1,2 +1,6 @@
-/.ruff_cache
+# local files
+.venv
+.ruff_cache
+
+# large files
 *.parquet
