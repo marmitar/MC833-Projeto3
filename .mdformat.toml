@@ -1,0 +1,16 @@
+wrap = 120
+number = true
+end_of_line = "lf"
+validate = true
+codeformatters = [
+  "python",
+  "sh",
+]
+extensions = [
+  "footnote",
+  "gfm",
+  "gfm_alerts",
+]
+# exclude = [
+#   "LICENSE.md",
+# ]
