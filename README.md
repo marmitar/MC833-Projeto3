@@ -30,7 +30,9 @@ uv sync --all-extras
 
 ### Download the dataset:
 
-...
+```sh
+uv run data/download.py
+```
 
 ### Run the analysis and training scripts:
 

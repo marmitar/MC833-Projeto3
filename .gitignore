@@ -4,3 +4,7 @@
 
 # large files
 *.parquet
+*.dump.gz
+*.dump.xz
+*.dump
+*.pcap
