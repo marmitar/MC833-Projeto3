@@ -1,0 +1,7 @@
+# https://github.com/WGUNDERWOOD/tex-fmt?tab=readme-ov-file#configuration-file-options
+verbosity = "error"
+tabsize = 4
+wrap = true
+wraplen = 120
+wrapmin = 120
+no-indent-envs = []

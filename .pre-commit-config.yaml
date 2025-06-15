@@ -34,3 +34,9 @@ repos:
           - mdformat-gfm-alerts
           - mdformat-ruff
           - mdformat-shfmt
+
+  # LaTeX formatter
+  - repo: https://github.com/WGUNDERWOOD/tex-fmt
+    rev: v0.5.4
+    hooks:
+      - id: tex-fmt
