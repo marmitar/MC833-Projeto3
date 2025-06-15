@@ -1,35 +1,59 @@
+"""Download files listed in data sources."""
+
 import glob
 import gzip
 import re
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from functools import wraps
 from itertools import chain
 from multiprocessing import Pool
-from os import PathLike
 from pathlib import Path
-from typing import Final
+from typing import Annotated, Final
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
+# points to "${project_root}/data"
 DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
 
-URL_PATTERN: Final = re.compile(r'http[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz')
+# URLs to extract from data sources
+URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
+
+
+def collect[T, **P](generator: Callable[P, Iterator[T]]) -> Callable[P, tuple[T, ...]]:
+    """Collect all the results of generator into tuple before returning."""
+
+    @wraps(generator)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> tuple[T, ...]:
+        return tuple(generator(*args, **kwargs))
+
+    return wrapper
 
 
 def data_sources() -> Iterator[Path]:
+    """Markdown files with download URLs in them."""
+
     for file in glob.iglob('*.md', root_dir=DATA_DIR):
         yield DATA_DIR / file
 
 
-def get_dump_urls(source_file: str | PathLike[str]) -> tuple[str, ...]:
+type Url = Annotated[str, 'A valid URL']
+
+
+@collect
+def get_dump_urls(source_file: Path) -> Iterator[Url]:
+    """Markdown files with download URLs in them."""
+
     with open(source_file) as file:
-        urls = tuple(url.group(0) for line in file for url in URL_PATTERN.finditer(line))
-    return urls
+        for line in file:
+            for url_match in URL_PATTERN.finditer(line):
+                yield url_match.group(0)
 
 
-def download_dump(dump_url: str) -> Path | None:
+def download_dump(dump_url: Url) -> Path | None:
+    """Download compressed dump file."""
+
     print(f'Downloading {dump_url}...')
-
     filename = Path(urlparse(dump_url).path).name
     output = DATA_DIR / filename
 
@@ -46,9 +70,10 @@ def download_dump(dump_url: str) -> Path | None:
         return None
 
 
-def extract_dump(dump_filename: str | PathLike[str]) -> Path | None:
-    print(f'Extracting {dump_filename}...')
+def extract_dump(dump_filename: Path) -> Path | None:
+    """Uncompress downloaded dump file."""
 
+    print(f'Extracting {dump_filename}...')
     gz_path = DATA_DIR / dump_filename
     output_filename = gz_path.with_suffix('')
 
@@ -66,10 +91,10 @@ def extract_dump(dump_filename: str | PathLike[str]) -> Path | None:
 
 
 def main():
-    with Pool() as p:
-        urls = p.imap_unordered(get_dump_urls, data_sources())
-        dumps = p.imap_unordered(download_dump, chain.from_iterable(urls))
-        results = p.imap_unordered(extract_dump, (dump for dump in dumps if dump))
+    with Pool() as pool:
+        urls = pool.imap_unordered(get_dump_urls, data_sources())
+        dumps = pool.imap_unordered(download_dump, chain.from_iterable(urls))
+        results = pool.imap_unordered(extract_dump, (dump for dump in dumps if dump))
         for result in results:
             print(f'Done {result}.')
 
