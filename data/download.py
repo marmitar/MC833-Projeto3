@@ -3,15 +3,33 @@
 import glob
 import gzip
 import re
-import shutil
-from collections.abc import Callable, Iterator
+import struct
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import AbstractContextManager
 from functools import wraps
-from itertools import chain
+from io import IOBase
+from itertools import chain, count
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated, Final, NoReturn
 from urllib.parse import urlparse
 from urllib.request import urlopen
+
+from tqdm import tqdm
+
+shared_tqdm: type['tqdm[NoReturn]'] = tqdm
+
+
+def set_shared_tqdm(tqdm: type['tqdm[NoReturn]']) -> None:
+    """Setup shared classes state for a given process."""
+    global shared_tqdm
+    shared_tqdm = tqdm
+
+
+def init_shared_tqdm_lock() -> object:
+    """Initialize shared state across processes."""
+    return tqdm.get_lock()  # type: ignore[reportUnknownMemberType]
+
 
 # points to "${project_root}/data"
 DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
@@ -20,7 +38,7 @@ DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
 URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
 
 
-def collect[T, **P](generator: Callable[P, Iterator[T]]) -> Callable[P, tuple[T, ...]]:
+def collecting_iterator[T, **P](generator: Callable[P, Iterator[T]]) -> Callable[P, tuple[T, ...]]:
     """Collect all the results of generator into tuple before returning."""
 
     @wraps(generator)
@@ -28,6 +46,38 @@ def collect[T, **P](generator: Callable[P, Iterator[T]]) -> Callable[P, tuple[T,
         return tuple(generator(*args, **kwargs))
 
     return wrapper
+
+
+def write_with_progress[T: IOBase](
+    *,
+    description: str,
+    position: int,
+    input: Callable[[], AbstractContextManager[T]],
+    input_size: Callable[[T], int | None],
+    output: Path,
+    chunk_size: int = 8192,
+) -> Path | None:
+    """Write input to output, showing updating a progress bar for the user."""
+
+    progress = tqdm(desc=description, unit='bytes', unit_scale=True, position=position)
+    try:
+        with input() as input_file, open(output, 'wb') as output_file:
+            file_size = input_size(input_file)
+            progress.reset(total=file_size)
+
+            while chunk := input_file.read(chunk_size):
+                output_file.write(chunk)
+                progress.update(len(chunk))
+
+        return output
+    except Exception as error:
+        progress.display(f'{error}')
+
+        output.unlink(missing_ok=True)
+        return None
+    finally:
+        progress.refresh()
+        progress.close()
 
 
 def data_sources() -> Iterator[Path]:
@@ -40,7 +90,7 @@ def data_sources() -> Iterator[Path]:
 type Url = Annotated[str, 'A valid URL']
 
 
-@collect
+@collecting_iterator
 def get_dump_urls(source_file: Path) -> Iterator[Url]:
     """Markdown files with download URLs in them."""
 
@@ -50,53 +100,66 @@ def get_dump_urls(source_file: Path) -> Iterator[Url]:
                 yield url_match.group(0)
 
 
-def download_dump(dump_url: Url) -> Path | None:
+def download_dump(args: tuple[int, Url]) -> Path | None:
     """Download compressed dump file."""
 
-    print(f'Downloading {dump_url}...')
+    position, dump_url = args
     filename = Path(urlparse(dump_url).path).name
-    output = DATA_DIR / filename
 
+    return write_with_progress(
+        description=f'Downloading {filename}',
+        position=position,
+        input=lambda: urlopen(dump_url),
+        input_size=lambda response: int(response.info().get('Content-Length', -1)),
+        output=DATA_DIR / filename,
+    )
+
+
+def get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
+    """
+    Reads the last 4 bytes of a gzip file to get the uncompressed size.
+    This should work for files under 4GB, as per the gzip format spec (ISIZE).
+    """
     try:
-        with urlopen(dump_url) as response, open(output, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file, length=8192)
-
-        print(f'Downloaded {filename}.')
-        return output
-
-    except Exception as error:
-        print(f'Error while downloading {dump_url}: {error}')
-        output.unlink(missing_ok=True)
+        with open(gzip_path, 'rb') as file:
+            file.seek(-4, 2)
+            return struct.unpack('<I', file.read(4))[0]
+    except (struct.error, OSError):
         return None
 
 
-def extract_dump(dump_filename: Path) -> Path | None:
+def extract_dump(args: tuple[int, Path]) -> Path | None:
     """Uncompress downloaded dump file."""
 
-    print(f'Extracting {dump_filename}...')
-    gz_path = DATA_DIR / dump_filename
-    output_filename = gz_path.with_suffix('')
+    position, dump_gz_path = args
+    output = dump_gz_path.with_suffix('')
 
-    try:
-        with gzip.open(gz_path, 'rb') as gz_file, open(output_filename, 'wb') as raw_file:
-            shutil.copyfileobj(gz_file, raw_file)
+    return write_with_progress(
+        description=f'Extracting {output.name}',
+        position=position,
+        input=lambda: gzip.open(dump_gz_path, 'rb'),
+        input_size=lambda _: get_gzip_uncompressed_size(dump_gz_path),
+        output=output,
+    )
 
-        print(f'Extracted {dump_filename}.')
-        return output_filename
 
-    except Exception as error:
-        print(f'Error while extracting {dump_filename}: {error}')
-        output_filename.unlink(missing_ok=True)
-        return None
+GLOBAL_COUNTER = count()
+
+
+def global_enumerate[T](items: Iterable[T]) -> Iterator[tuple[int, T]]:
+    """Like enumerate, but indices are globally shared and never repeated."""
+    return zip(GLOBAL_COUNTER, items, strict=False)
 
 
 def main():
-    with Pool() as pool:
+    init_shared_tqdm_lock()
+
+    with Pool(initializer=set_shared_tqdm, initargs=(tqdm,)) as pool:
         urls = pool.imap_unordered(get_dump_urls, data_sources())
-        dumps = pool.imap_unordered(download_dump, chain.from_iterable(urls))
-        results = pool.imap_unordered(extract_dump, (dump for dump in dumps if dump))
-        for result in results:
-            print(f'Done {result}.')
+        dumps = pool.imap_unordered(download_dump, global_enumerate(chain.from_iterable(urls)))
+        results = pool.imap_unordered(extract_dump, global_enumerate(dump for dump in dumps if dump))
+        for _ in results:
+            pass
 
 
 if __name__ == '__main__':

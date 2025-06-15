@@ -41,7 +41,9 @@ classifiers = [
   "Topic :: System :: Networking",
   "Topic :: System :: Networking :: Monitoring",
 ]
-dependencies = []
+dependencies = [
+  "tqdm >= 4.67.1",
+]
 
 [project.urls]
 Documentation = "https://github.com/marmitar/MC833-Projeto3#readme"

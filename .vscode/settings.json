@@ -7,5 +7,4 @@
   "latex-workshop.latex.outDir": "%DIR%/build",
   "python.analysis.languageServerMode": "full",
   "python.analysis.regenerateStdLibIndices": true,
-  "python.analysis.typeCheckingMode": "strict",
 }
