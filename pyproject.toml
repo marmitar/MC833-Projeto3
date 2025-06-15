@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "network-traffic-predictor"
 version = "0.1.0"
-description = 'Build a model that forecasts the `bytes_per_second` in a time series generated from a public datasets.'
+description = "Build a model that forecasts the `bytes_per_second` in a time series generated from a public datasets."
 readme = "README.md"
 requires-python = ">= 3.12"
 license = "AGPL-3.0-or-later"
@@ -50,3 +50,58 @@ dependencies = []
 Documentation = "https://github.com/marmitar/MC833-Projeto3#readme"
 Issues = "https://github.com/marmitar/MC833-Projeto3/issues"
 Source = "https://github.com/marmitar/MC833-Projeto3"
+
+[tool.hatch.envs.lint]
+dependencies = [
+  "ruff >= 0.11.13",
+]
+[tool.hatch.envs.lint.scripts]
+check = "ruff check src/ tests/"
+format = "ruff format src/ tests/"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "pyright >= 1.1.402",
+]
+[tool.hatch.envs.types.scripts]
+check = "pyright src/"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+indent-width = 4
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "single"
+line-ending = "lf"
+docstring-code-format = true
+preview = true
+
+[tool.ruff.lint]
+select = [
+  "E", # pycodestyle (error)
+  "F", # pyflakes
+  "B", # bugbear
+  "B9",
+  "C4", # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "I", # isort
+  "UP", # pyupgrade
+  "PIE", # flake8-pie
+  "PGH", # pygrep-hooks
+  "PYI", # flake8-pyi
+  "RUF",
+]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+# type checking
+typeCheckingMode = "strict"
+reportMissingImports = "error"
+reportMissingTypeStubs = true
