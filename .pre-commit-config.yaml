@@ -5,7 +5,7 @@ default_install_hook_types:
   - pre-push
 
 # global unformatted files
-exclude: 'docs/.*\.docx|typings/'
+exclude: 'docs/.*\.docx'
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -49,7 +49,7 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.13
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
