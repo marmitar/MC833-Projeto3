@@ -1,111 +1,104 @@
 import socket
+from asyncio import Future
+from io import BytesIO
 from pathlib import Path
 
 import dpkt
 import polars as pl
+from pcap_parallel import PCAPParallel
 
 
-def process_pcap_with_dpkt(pcap_path: Path, parquet_output_path: Path):
+def worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     """
-    Parses a PCAP file using the lightweight dpkt library and aggregates
-    the results with the high-performance Polars DataFrame library.
-
-    Args:
-        pcap_path: The path to the input PCAP file.
-        parquet_output_path: The path to save the final Parquet file.
-
-    Returns:
-        A Polars DataFrame containing the processed packet data.
+    This function is executed by each worker process on a chunk of the PCAP file.
+    It returns a dictionary of lists, which is efficient to merge later.
     """
-    print(f'Processing {pcap_path.name} with dpkt and polars...')
+    # Each worker gets its own lists to avoid any shared state issues.
+    timestamps, source_ips, dest_ips, protocols, sizes, source_ports, dest_ports, types = [], [], [], [], [], [], [], []
 
-    # 1. Use simple lists for fast data accumulation.
-    # This is much more efficient than appending dictionaries.
-    timestamps = []
-    source_ips = []
-    dest_ips = []
-    protocols = []
-    sizes = []
-    source_ports = []
-    dest_ports = []
-    types = []
-
-    packet_count = 0
-    # Limit processing for demonstration, set to a very high number to process all
-    # N = 9999999
-    N = float('inf')
-
-    try:
-        with open(pcap_path, 'rb') as f:
-            # dpkt's PcapReader is an efficient iterator over the file
-            pcap = dpkt.pcap.Reader(f)
-
-            for timestamp, buf in pcap:
-                packet_count += 1
-                if packet_count > N:
-                    break
-
-                # Unpack the Ethernet frame (level 2)
-                # We need to know the link type. Common ones are DLT_EN10MB (Ethernet)
-                # and DLT_RAW (raw IP). Let's assume Ethernet for MAWI data.
-                try:
-                    eth = dpkt.ethernet.Ethernet(buf)
-                except dpkt.dpkt.UnpackError:
-                    # Skip packets that can't be unpacked as Ethernet
-                    continue
-
-                # Ensure the packet contains IP data (level 3)
-                if not isinstance(eth.data, dpkt.ip.IP):
-                    continue
-
+    for timestamp, buf in dpkt.pcap.Reader(file_handle):
+        try:
+            eth = dpkt.ethernet.Ethernet(buf)
+            if isinstance(eth.data, dpkt.ip.IP):
                 ip = eth.data
-
-                # --- Append data to our lists ---
                 timestamps.append(timestamp)
-                # Convert packed binary IP addresses to human-readable strings
                 source_ips.append(socket.inet_ntoa(ip.src))
                 dest_ips.append(socket.inet_ntoa(ip.dst))
                 protocols.append(ip.p)
-                sizes.append(len(buf))  # len(buf) is equivalent to len(pkt)
+                sizes.append(len(buf))
 
-                # Check for TCP or UDP payload (level 4)
                 if isinstance(ip.data, dpkt.tcp.TCP):
-                    tcp = ip.data
-                    source_ports.append(tcp.sport)
-                    dest_ports.append(tcp.dport)
                     types.append('TCP')
+                    source_ports.append(ip.data.sport)
+                    dest_ports.append(ip.data.dport)
                 elif isinstance(ip.data, dpkt.udp.UDP):
-                    udp = ip.data
-                    source_ports.append(udp.sport)
-                    dest_ports.append(udp.dport)
                     types.append('UDP')
+                    source_ports.append(ip.data.sport)
+                    dest_ports.append(ip.data.dport)
                 else:
+                    types.append('Other')
                     source_ports.append(None)
                     dest_ports.append(None)
-                    types.append('Other')
-    except Exception as e:
-        print(f'An error occurred while reading the PCAP file: {e}')
-        return None
+        except (dpkt.dpkt.UnpackError, AttributeError):
+            continue
 
-    print(f'PCAP parsing complete. Processed {packet_count} packets.')
-    print('Creating Polars DataFrame...')
+    # THE FIX: Create a DataFrame inside the worker with a defined schema.
+    # This guarantees that every returned chunk has the same data types.
+    return pl.DataFrame(
+        {
+            'Timestamp': timestamps,
+            'Source IP': source_ips,
+            'Destination IP': dest_ips,
+            'Protocol': protocols,
+            'Size (bytes)': sizes,
+            'Source Port': source_ports,
+            'Destination Port': dest_ports,
+            'Type': types,
+        },
+        schema={
+            'Timestamp': pl.Float64,
+            'Source IP': pl.String,
+            'Destination IP': pl.String,
+            'Protocol': pl.UInt8,
+            'Size (bytes)': pl.UInt32,
+            # Ports can be null, so we use integer types that support nulls.
+            'Source Port': pl.UInt16,
+            'Destination Port': pl.UInt16,
+            'Type': pl.String,
+        },
+    )
 
-    # 2. Create a Polars DataFrame directly from the lists.
-    # This is the most efficient way to construct a DataFrame.
-    df = pl.DataFrame({
-        'Packet': range(1, len(timestamps) + 1),
-        'Timestamp': timestamps,
-        'Source IP': source_ips,
-        'Destination IP': dest_ips,
-        'Protocol': protocols,
-        'Size (bytes)': sizes,
-        'Source Port': source_ports,
-        'Destination Port': dest_ports,
-        'Type': types,
-    })
 
-    # Convert timestamp from epoch to datetime
-    df = df.with_columns(pl.from_epoch('Timestamp', time_unit='s'))
+def process_pcap_parallel(pcap_path: Path, parquet_output_path: Path):
+    """
+    Parses a PCAP file in parallel using the pcap-parallel library.
+    WARNING: This loads the entire PCAP file into memory.
+    """
+    print(f'Processing {pcap_path.name} with pcap-parallel...')
+
+    # Initialize the parallel processor.
+    # We can specify max_cores to match your Ryzen 7 7700X.
+    ps = PCAPParallel(
+        pcap_path,
+        callback=worker_process_chunk,
+    )
+
+    # This call blocks until all chunks are processed by the worker pool.
+    # It returns a list of Future objects.
+    future_results: list[Future] = ps.split()
+    print(f'PCAP file split and processed by {len(future_results)} workers.')
+
+    # Collect results from all workers.
+    # .result() blocks until that specific future is done.
+    list_of_dicts = [future.result() for future in future_results]
+
+    print('Merging results and creating Polars DataFrame...')
+
+    # Polars can efficiently create a DataFrame from a list of dictionaries
+    df = pl.from_dicts(list_of_dicts, schema_overrides={'Source Port': pl.UInt16, 'Destination Port': pl.UInt16})
+
+    # Add packet numbers and convert timestamp
+    df = df.with_row_count('Packet', offset=1).with_columns(pl.from_epoch('Timestamp', time_unit='s'))
 
     print(f'Writing output to {parquet_output_path}...')
     df.write_parquet(parquet_output_path)
@@ -114,15 +107,19 @@ def process_pcap_with_dpkt(pcap_path: Path, parquet_output_path: Path):
     return df
 
 
-# --- Example Usage ---
-# Assumes '200701251400.pcap' is the decompressed file from your notebook
-pcap_file = Path('data/200701251400.dump')
-parquet_file = Path('200701251400_dpkt.parquet')
+# --- Main Execution ---
+if __name__ == '__main__':
+    # Make sure to decompress the .dump.gz file to a .pcap or .dump file first
+    pcap_file = Path('data/200701251400.dump')
 
-if pcap_file.exists():
-    df_dpkt = process_pcap_with_dpkt(pcap_file, parquet_file)
-    if df_dpkt is not None:
-        print('\n--- Final DataFrame Head ---')
-        print(df_dpkt.head())
-else:
-    print(f'Error: {pcap_file} not found.')
+    if not pcap_file.exists():
+        print(f"Error: Input file '{pcap_file}' not found.")
+        print('Please decompress the .dump.gz file first.')
+    else:
+        # --- CHOOSE WHICH VERSION TO RUN ---
+
+        # Option 2: Run the parallel version (requires more RAM)
+        parquet_out_parallel = Path(f'{pcap_file.stem}_parallel.parquet')
+        df_parallel = process_pcap_parallel(pcap_file, parquet_out_parallel)
+        print('\n--- Parallel DataFrame Head ---')
+        print(df_parallel.head())
