@@ -3,7 +3,7 @@ name = "network-traffic-predictor"
 version = "0.1.0"
 description = "Build a model that forecasts the `bytes_per_second` in a time series generated from a public datasets."
 readme = "README.md"
-requires-python = ">= 3.12"
+requires-python = ">= 3.12, < 4"
 license = "AGPL-3.0-or-later"
 keywords = [
   "time-series",
@@ -42,7 +42,7 @@ classifiers = [
   "Topic :: System :: Networking :: Monitoring",
 ]
 dependencies = [
-  "tqdm >= 4.67.1",
+  "tqdm >= 4.67.1, < 5",
 ]
 
 [project.urls]
@@ -51,7 +51,7 @@ Issues = "https://github.com/marmitar/MC833-Projeto3/issues"
 Source = "https://github.com/marmitar/MC833-Projeto3"
 
 [build-system]
-requires = ["uv_build >= 0.7.13, <0.8.0"]
+requires = ["uv_build >= 0.7.13, < 1"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
@@ -61,13 +61,14 @@ module-root = ""
 [dependency-groups]
 dev = [
   # Linting
-  "pre-commit >= 4.2.0",
-  "ruff >= 0.11.13",
+  "pre-commit >= 4.2.0, < 5",
+  "ruff >= 0.11.13, < 1",
   # Typing
-  "pyright >= 1.1.402",
+  "pyright >= 1.1.402, < 2",
+  "types-tqdm >= 4.67.0.20250516, < 5",
   # Testing
-  "pytest >= 8.4.0",
-  "pytest-cov >= 6.2.1",
+  "pytest >= 8.4.0, < 9",
+  "pytest-cov >= 6.2.1, < 7",
 ]
 
 [tool.ruff]
@@ -99,14 +100,28 @@ select = [
   "RUF",
 ]
 
+# see https://microsoft.github.io/pyright/#/configuration
 [tool.pyright]
 exclude = [
   ".venv/",
   "docs/",
 ]
+ignore = [
+  ".venv/",
+]
+venv = ".venv"
 pythonVersion = "3.12"
 pythonPlatform = "Linux"
 # type checking
 typeCheckingMode = "strict"
-reportMissingImports = "error"
-reportMissingTypeStubs = true
+reportCallInDefaultInitializer = "warning"
+reportImplicitOverride = "warning"
+reportImplicitStringConcatenation = "warning"
+reportImportCycles = "warning"
+reportMissingSuperCall = "warning"
+reportPropertyTypeMismatch = "warning"
+reportShadowedImports = "warning"
+reportUninitializedInstanceVariable = "warning"
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnreachable = "warning"
+reportUnusedCallResult = "warning"

@@ -66,8 +66,8 @@ def write_with_progress[T: IOBase](
             progress.reset(total=file_size)
 
             while chunk := input_file.read(chunk_size):
-                output_file.write(chunk)
-                progress.update(len(chunk))
+                _ = output_file.write(chunk)
+                _ = progress.update(len(chunk))
 
         return output
     except Exception as error:
@@ -122,7 +122,7 @@ def get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
     """
     try:
         with open(gzip_path, 'rb') as file:
-            file.seek(-4, 2)
+            _ = file.seek(-4, 2)
             return struct.unpack('<I', file.read(4))[0]
     except (struct.error, OSError):
         return None
@@ -152,7 +152,7 @@ def global_enumerate[T](items: Iterable[T]) -> Iterator[tuple[int, T]]:
 
 
 def main():
-    init_shared_tqdm_lock()
+    _ = init_shared_tqdm_lock()
 
     with Pool(initializer=set_shared_tqdm, initargs=(tqdm,)) as pool:
         urls = pool.imap_unordered(get_dump_urls, data_sources())
