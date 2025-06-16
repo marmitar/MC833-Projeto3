@@ -3,7 +3,7 @@ name = "network-traffic-predictor"
 version = "0.1.0"
 description = "Build a model that forecasts the `bytes_per_second` in a time series generated from a public datasets."
 readme = "README.md"
-requires-python = ">= 3.12, < 3.13"
+requires-python = ">= 3.12.11, < 3.13"
 license = "AGPL-3.0-or-later"
 keywords = [
   "time-series",
@@ -96,6 +96,7 @@ dev = [
 ]
 data = [
   "tqdm >= 4.67.1, < 5",
+  "parquet-tools >= 0.2.16, < 1",
 ]
 mawi = [
   "ipykernel >= 6.29.5, < 7",

@@ -199,10 +199,10 @@ class Reader:
     def setfilter(self, value, optimize=...):
         ...
 
-    def readpkts(self) -> list[tuple[int, bytes]]:
+    def readpkts(self) -> list[tuple[float, bytes]]:
         ...
 
-    def __next__(self) -> tuple[int, bytes]:
+    def __next__(self) -> tuple[float, bytes]:
         ...
 
     next = ...
@@ -213,7 +213,7 @@ class Reader:
     def loop(self, callback, *args): # -> None:
         ...
 
-    def __iter__(self) -> Iterator[tuple[int, bytes]]:
+    def __iter__(self) -> Iterator[tuple[float, bytes]]:
         ...
 
 
