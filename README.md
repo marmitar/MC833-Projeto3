@@ -25,7 +25,7 @@ analysis of the results.
 ### Install dependencies:
 
 ```sh
-uv sync --all-extras
+uv sync --all-extras --all-groups
 ```
 
 ### Download the dataset:
