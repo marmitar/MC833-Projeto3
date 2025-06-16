@@ -156,6 +156,7 @@ ignore = [
   "docs/",
   "typings/",
 ]
+venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
 pythonPlatform = "Linux"

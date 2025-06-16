@@ -4,14 +4,22 @@ import io
 import os
 import multiprocessing
 import dpkt
-from typing import List
+from typing import Callable, List
 from concurrent.futures import Future, ProcessPoolExecutor
 from logging import debug, info
 
 """Loads a PCAP file and counts contents with various levels of storage"""
-class PCAPParallel:
+class PCAPParallel[T]:
 
-    def __init__(self, pcap_file: str, callback=..., split_size: int = ..., maximum_count: int = ..., pcap_filter: str | None = ..., maximum_cores: int | None = ...) -> List[io.BytesIO]:
+    def __init__(
+        self,
+        pcap_file: str,
+        callback: Callable[[BytesIO], T],
+        split_size: int = ...,
+        maximum_count: int = ...,
+        pcap_filter: str | None = ...,
+        maximum_cores: int | None = ...
+    ) -> List[io.BytesIO]:
         ...
 
     def set_split_size(self): # -> int | None:
@@ -23,7 +31,7 @@ class PCAPParallel:
 
         ...
 
-    def split(self) -> List[io.BytesIO] | List[Future]:
+    def split(self) -> List[Future[T]]:
 
         ...
 

@@ -32,6 +32,14 @@ class TCP(dpkt.Packet):
     def unpack(self, buf): # -> None:
         ...
 
+    @property
+    def sport(self) -> int:
+        ...
+
+    @property
+    def dport(self) -> int:
+        ...
+
 
 
 TCP_OPT_EOL = ...

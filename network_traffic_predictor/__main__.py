@@ -1,7 +1,7 @@
 import socket
-from asyncio import Future
 from io import BytesIO
 from pathlib import Path
+from typing import Literal
 
 import dpkt
 import polars as pl
@@ -14,7 +14,14 @@ def worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     It returns a dictionary of lists, which is efficient to merge later.
     """
     # Each worker gets its own lists to avoid any shared state issues.
-    timestamps, source_ips, dest_ips, protocols, sizes, source_ports, dest_ports, types = [], [], [], [], [], [], [], []
+    timestamps: list[int] = []
+    source_ips: list[str] = []
+    dest_ips: list[str] = []
+    protocols: list[int] = []
+    sizes: list[int] = []
+    source_ports: list[int | None] = []
+    dest_ports: list[int | None] = []
+    types: list[Literal['TCP', 'UDP', 'other']] = []
 
     for timestamp, buf in dpkt.pcap.Reader(file_handle):
         try:
@@ -36,7 +43,7 @@ def worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
                     source_ports.append(ip.data.sport)
                     dest_ports.append(ip.data.dport)
                 else:
-                    types.append('Other')
+                    types.append('other')
                     source_ports.append(None)
                     dest_ports.append(None)
         except (dpkt.dpkt.UnpackError, AttributeError):
@@ -79,13 +86,13 @@ def process_pcap_parallel(pcap_path: Path, parquet_output_path: Path):
     # Initialize the parallel processor.
     # We can specify max_cores to match your Ryzen 7 7700X.
     ps = PCAPParallel(
-        pcap_path,
+        str(pcap_path),
         callback=worker_process_chunk,
     )
 
     # This call blocks until all chunks are processed by the worker pool.
     # It returns a list of Future objects.
-    future_results: list[Future] = ps.split()
+    future_results = ps.split()
     print(f'PCAP file split and processed by {len(future_results)} workers.')
 
     # Collect results from all workers.
@@ -95,10 +102,10 @@ def process_pcap_parallel(pcap_path: Path, parquet_output_path: Path):
     print('Merging results and creating Polars DataFrame...')
 
     # Polars can efficiently create a DataFrame from a list of dictionaries
-    df = pl.from_dicts(list_of_dicts, schema_overrides={'Source Port': pl.UInt16, 'Destination Port': pl.UInt16})
+    df = pl.concat(list_of_dicts)
 
     # Add packet numbers and convert timestamp
-    df = df.with_row_count('Packet', offset=1).with_columns(pl.from_epoch('Timestamp', time_unit='s'))
+    df = df.with_row_index('Packet', offset=1).with_columns(pl.from_epoch('Timestamp', time_unit='s'))
 
     print(f'Writing output to {parquet_output_path}...')
     df.write_parquet(parquet_output_path)

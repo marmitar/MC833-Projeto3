@@ -26,6 +26,18 @@ class IP(dpkt.Packet):
     def unpack(self, buf): # -> None:
         ...
 
+    @property
+    def src(self) -> bytes:
+        ...
+
+    @property
+    def dst(self) -> bytes:
+        ...
+
+    @property
+    def p(self) -> int:
+        ...
+
     @classmethod
     def set_proto(cls, p, pktclass): # -> None:
         ...

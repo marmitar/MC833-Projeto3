@@ -26,8 +26,11 @@ class _MetaPacket(type):
 class Packet(_MetaPacket("Temp", (object, ), {})):
 
     def __init__(self, *args, **kwargs) -> None:
-
         ...
+
+    @property
+    def data(self) -> Packet | None:
+        ....
 
     def __len__(self):
         ...

@@ -1,6 +1,8 @@
 
 
+from io import BytesIO
 import sys
+from typing import Iterator
 from . import dpkt
 
 """Libpcap file format."""
@@ -181,14 +183,14 @@ class Writer:
 
 class Reader:
 
-    def __init__(self, fileobj) -> None:
+    def __init__(self, fileobj: BytesIO) -> None:
         ...
 
     @property
-    def fd(self):
+    def fd(self) -> int:
         ...
 
-    def fileno(self):
+    def fileno(self) -> int:
         ...
 
     def datalink(self):
@@ -197,10 +199,10 @@ class Reader:
     def setfilter(self, value, optimize=...):
         ...
 
-    def readpkts(self): # -> list[tuple[Any, Any]]:
+    def readpkts(self) -> list[tuple[int, bytes]]:
         ...
 
-    def __next__(self): # -> tuple[Any, Any]:
+    def __next__(self) -> tuple[int, bytes]:
         ...
 
     next = ...
@@ -211,7 +213,7 @@ class Reader:
     def loop(self, callback, *args): # -> None:
         ...
 
-    def __iter__(self): # -> Generator[tuple[Any, Any], Any, None]:
+    def __iter__(self) -> Iterator[tuple[int, bytes]]:
         ...
 
 
