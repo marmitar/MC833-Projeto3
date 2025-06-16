@@ -1,2 +1,3 @@
-*.ipynb linguist-vendored
-*.docx diff=pandoc
+*.ipynb  linguist-vendored
+*.docx   diff=pandoc
+typings/ linguist-generated

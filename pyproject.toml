@@ -88,6 +88,7 @@ dev = [
   "ruff >= 0.11.13, < 1",
   # Typing
   "pyright >= 1.1.402, < 2",
+  "mypy >= 1.16.0, < 2",
   "types-tqdm >= 4.67.0.20250516, < 5",
   # Testing
   "pytest >= 8.4.0, < 9",
@@ -140,13 +141,16 @@ select = [
 
 # see https://microsoft.github.io/pyright/#/configuration
 [tool.pyright]
+stubPath = "./typings"
 exclude = [
   ".venv/",
   "docs/",
+  "typings/",
 ]
 ignore = [
   ".venv/",
   "docs/",
+  "typings/",
 ]
 venv = ".venv"
 pythonVersion = "3.12"
