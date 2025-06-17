@@ -498,6 +498,13 @@ polars = [
     { name = "polars", extra = ["numpy", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
+process = [
+    { name = "dpkt", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pcap-parallel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "polars", extra = ["numpy", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
 pyarrow = [
     { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
@@ -547,6 +554,7 @@ requires-dist = [
     { name = "dpkt", marker = "extra == 'pcap-parallel'", specifier = ">=1.9.8,<2" },
     { name = "network-traffic-predictor", extras = ["download"], marker = "extra == 'all'" },
     { name = "network-traffic-predictor", extras = ["numpy", "pyarrow"], marker = "extra == 'polars'" },
+    { name = "network-traffic-predictor", extras = ["pcap-parallel", "polars"], marker = "extra == 'process'" },
     { name = "network-traffic-predictor", extras = ["tqdm"], marker = "extra == 'download'" },
     { name = "numpy", marker = "extra == 'numpy'", specifier = ">=2.0.0,<3" },
     { name = "pcap-parallel", marker = "extra == 'pcap-parallel'", specifier = ">=0.1,<0.2" },
@@ -556,7 +564,7 @@ requires-dist = [
     { name = "tensorflow-rocm", marker = "extra == 'rocm' and extra == 'tensorflow'", specifier = ">=2.17.1,<3", index = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4" },
     { name = "tqdm", marker = "extra == 'tqdm'", specifier = ">=4.67.1,<5" },
 ]
-provides-extras = ["all", "download", "rocm", "numpy", "pcap-parallel", "polars", "pyarrow", "tensorflow", "tqdm"]
+provides-extras = ["all", "download", "process", "rocm", "numpy", "pcap-parallel", "polars", "pyarrow", "tensorflow", "tqdm"]
 
 [package.metadata.requires-dev]
 data = [{ name = "parquet-tools", specifier = ">=0.2.16,<1" }]

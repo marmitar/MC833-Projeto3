@@ -51,6 +51,9 @@ all = [
 download = [
   "network-traffic-predictor[tqdm]",
 ]
+process = [
+  "network-traffic-predictor[pcap_parallel,polars]",
+]
 # Extra selectors
 rocm = []
 # shared package versions
@@ -77,6 +80,7 @@ Source = "https://github.com/marmitar/MC833-Projeto3"
 
 [project.scripts]
 download = "network_traffic_predictor.download:main"
+process = "network_traffic_predictor.process:main"
 
 [tool.uv]
 environments = [
