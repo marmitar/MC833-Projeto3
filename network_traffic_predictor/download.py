@@ -3,14 +3,16 @@
 import asyncio
 import glob
 import gzip
+import os
 import re
 import struct
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager, asynccontextmanager
 from io import IOBase
+from itertools import cycle
 from pathlib import Path
 from signal import SIGINT
 from traceback import print_exception
@@ -18,7 +20,32 @@ from typing import Final, Literal
 from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
+from matplotlib import colormaps
+from matplotlib.colors import to_hex
 from tqdm import tqdm
+
+# --- Colored Output ---
+
+
+def _colormap_cycle(name: str) -> Iterator[str]:
+    """Get the colormap as a cycle."""
+    cmap = colormaps.get_cmap(name)
+    colors = (to_hex(cmap(i)) for i in range(cmap.N))
+    return cycle(colors)
+
+
+_TAB10_COLORS = _colormap_cycle('tab10')
+
+
+def _should_use_colors() -> bool:
+    """Checks if the environment supports colors and the user wants them."""
+    if os.environ.get('NO_COLOR'):
+        return False
+    return sys.stdout.isatty()
+
+
+_ = tqdm.get_lock()  # type: ignore[reportUnknownMemberType]
+
 
 # --- Core I/O Operations ---
 
@@ -29,10 +56,12 @@ def _write_output[T: IOBase](
     input: Callable[[], AbstractContextManager[T]],
     input_size: Callable[[T], int | None],
     output: Path,
-    quiet: bool = False,
+    quiet: bool,
+    enable_colors: bool,
 ) -> Path:
     """Write input to output, updating a progress bar for the user when requested."""
-    progress = tqdm(desc=f'{operation} {output.name}', disable=quiet, unit='bytes', unit_scale=True)
+    color = next(_TAB10_COLORS) if enable_colors else None
+    progress = tqdm(desc=f'{operation} {output.name}', disable=quiet, colour=color, unit='bytes', unit_scale=True)
     try:
         with input() as input_file, open(output, 'wb') as output_file:
             progress.reset(total=input_size(input_file))
@@ -52,7 +81,7 @@ def _write_output[T: IOBase](
         progress.close()
 
 
-def _download_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool = False) -> Path:
+def _download_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool, enable_colors: bool) -> Path:
     """Download compressed dump file."""
     return _write_output(
         operation='Downloading',
@@ -60,6 +89,7 @@ def _download_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool = Fal
         input_size=lambda response: int(response.info().get('Content-Length', -1)),
         output=output_dir / Path(dump_url.path).name,
         quiet=quiet,
+        enable_colors=enable_colors,
     )
 
 
@@ -76,7 +106,7 @@ def _get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
         return None
 
 
-def _extract_dump(dump_gz_path: Path, *, quiet: bool = False) -> Path:
+def _extract_dump(dump_gz_path: Path, *, quiet: bool, enable_colors: bool) -> Path:
     """Uncompress downloaded dump file."""
     return _write_output(
         operation='Extracting',
@@ -84,13 +114,14 @@ def _extract_dump(dump_gz_path: Path, *, quiet: bool = False) -> Path:
         input_size=lambda _: _get_gzip_uncompressed_size(dump_gz_path),
         output=dump_gz_path.with_suffix(''),
         quiet=quiet,
+        enable_colors=enable_colors,
     )
 
 
-def _process_single_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool = True) -> Path:
+def _process_single_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool, enable_colors: bool) -> Path:
     """Download and extract a PCAP dump."""
-    gzip_path = _download_dump(dump_url, output_dir, quiet=quiet)
-    return _extract_dump(gzip_path, quiet=quiet)
+    gzip_path = _download_dump(dump_url, output_dir, quiet=quiet, enable_colors=enable_colors)
+    return _extract_dump(gzip_path, quiet=quiet, enable_colors=enable_colors)
 
 
 # --- Data Source Parsing ---
@@ -134,7 +165,7 @@ async def _with_no_wait_task_group() -> AsyncIterator[asyncio.TaskGroup]:
             executor.shutdown(wait=True, cancel_futures=False)
 
 
-async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool = False) -> int:
+async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool, enable_colors: bool = True) -> int:
     """Download and extract all dump files from all sources listed."""
     tasks: list[asyncio.Task[Path]] = []
 
@@ -142,7 +173,13 @@ async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool = False) ->
         for source in sources:
             output_dir = source.parent
             for url in _get_dump_urls(source):
-                coro = asyncio.to_thread(_process_single_dump, url, output_dir, quiet=quiet)
+                coro = asyncio.to_thread(
+                    _process_single_dump,
+                    url,
+                    output_dir,
+                    quiet=quiet,
+                    enable_colors=enable_colors,
+                )
                 tasks.append(task_group.create_task(coro))
 
     error_count = 0
@@ -161,6 +198,7 @@ def main() -> int:
     _ = parser.add_argument('source', nargs='+', type=Path, help='File or directory to search for data urls.')
     _ = parser.add_argument('-r', '--recursive', action='store_true', help='Recurse into the SOURCE directories.')
     _ = parser.add_argument('-q', '--quiet', action='store_true', help="Don't display progress.")
+    _ = parser.add_argument('-c', '--color', action=BooleanOptionalAction, default=None, help='Display colored output.')
 
     args = parser.parse_intermixed_args()
 
@@ -169,8 +207,9 @@ def main() -> int:
         print('No valid source files found.', file=sys.stderr)
         return 1
 
+    enable_colors = bool(args.color) if args.color is not None else _should_use_colors()
     try:
-        return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet))
+        return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet, enable_colors=enable_colors))
     except KeyboardInterrupt:
         return SIGINT
 
