@@ -4,6 +4,11 @@
   "files.insertFinalNewline": true,
   "files.trimFinalNewlines": true,
   "files.trimTrailingWhitespace": true,
+  "files.exclude": {
+    ".venv/": true,
+    ".mypy_cache/": true,
+    ".ruff_cache/": true,
+  },
   "latex-workshop.latex.outDir": "%DIR%/build",
   "python.analysis.languageServerMode": "full",
   "python.analysis.regenerateStdLibIndices": true,

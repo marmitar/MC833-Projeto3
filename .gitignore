@@ -1,5 +1,6 @@
 # local files
 .venv
+.mypy_cache
 .ruff_cache
 
 # large files

@@ -32,11 +32,13 @@ repos:
       - id: mdformat
         # https://mdformat.readthedocs.io/en/stable/users/plugins.html
         additional_dependencies:
+          - mdformat-config
           - mdformat-footnote
           - mdformat-gfm
           - mdformat-gfm-alerts
           - mdformat-ruff
           - mdformat-shfmt
+          - mdformat-myst
         exclude: 'LICENSE\.md'
 
   # LaTeX formatter
