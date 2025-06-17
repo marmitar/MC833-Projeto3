@@ -44,7 +44,13 @@ classifiers = [
 
 [project.optional-dependencies]
 # All optional dependencies
-all = [] # TODO
+all = [
+  "network-traffic-predictor[download]", # TODO
+]
+# Script dependencies
+download = [
+  "network-traffic-predictor[tqdm]",
+]
 # Extra selectors
 rocm = []
 # shared package versions
@@ -68,6 +74,9 @@ tqdm = ["tqdm >= 4.67.1, < 5"]
 Documentation = "https://github.com/marmitar/MC833-Projeto3#readme"
 Issues = "https://github.com/marmitar/MC833-Projeto3/issues"
 Source = "https://github.com/marmitar/MC833-Projeto3"
+
+[project.scripts]
+download = "network_traffic_predictor.download:main"
 
 [tool.uv]
 environments = [
