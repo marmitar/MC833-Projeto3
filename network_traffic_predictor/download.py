@@ -1,35 +1,19 @@
 """Download files listed in data sources."""
 
+import asyncio
 import glob
 import gzip
 import re
 import struct
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import AbstractContextManager
-from functools import wraps
 from io import IOBase
-from itertools import chain, count
-from multiprocessing import Pool
 from pathlib import Path
-from typing import Annotated, Final, NoReturn
-from urllib.parse import urlparse
+from typing import Final
+from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
 from tqdm import tqdm
-
-_shared_tqdm: type['tqdm[NoReturn]'] = tqdm
-
-
-def _set_shared_tqdm(tqdm: type['tqdm[NoReturn]']) -> None:
-    """Setup shared classes state for a given process."""
-    global _shared_tqdm
-    _shared_tqdm = tqdm
-
-
-def _init_shared_tqdm_lock() -> object:
-    """Initialize shared state across processes."""
-    return tqdm.get_lock()  # type: ignore[reportUnknownMemberType]
-
 
 # points to "${project_root}/data"
 _DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
@@ -38,28 +22,16 @@ _DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
 _URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
 
 
-def _collecting_iterator[T, **P](generator: Callable[P, Iterator[T]]) -> Callable[P, tuple[T, ...]]:
-    """Collect all the results of generator into tuple before returning."""
-
-    @wraps(generator)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> tuple[T, ...]:
-        return tuple(generator(*args, **kwargs))
-
-    return wrapper
-
-
 def _write_with_progress[T: IOBase](
     *,
     description: str,
-    position: int,
     input: Callable[[], AbstractContextManager[T]],
     input_size: Callable[[T], int | None],
     output: Path,
     chunk_size: int = 8192,
-) -> Path | None:
+) -> Path:
     """Write input to output, showing updating a progress bar for the user."""
-
-    progress = tqdm(desc=description, unit='bytes', unit_scale=True, position=position)
+    progress = tqdm(desc=description, unit='bytes', unit_scale=True)
     try:
         with input() as input_file, open(output, 'wb') as output_file:
             file_size = input_size(input_file)
@@ -72,9 +44,8 @@ def _write_with_progress[T: IOBase](
         return output
     except Exception as error:
         progress.display(f'{error}')
-
         output.unlink(missing_ok=True)
-        return None
+        raise
     finally:
         progress.refresh()
         progress.close()
@@ -82,34 +53,25 @@ def _write_with_progress[T: IOBase](
 
 def _data_sources() -> Iterator[Path]:
     """Markdown files with download URLs in them."""
-
     for file in glob.iglob('*.md', root_dir=_DATA_DIR):
         yield _DATA_DIR / file
 
 
-type Url = Annotated[str, 'A valid URL']
-
-
-@_collecting_iterator
-def _get_dump_urls(source_file: Path) -> Iterator[Url]:
+def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
     """Markdown files with download URLs in them."""
-
     with open(source_file) as file:
         for line in file:
             for url_match in _URL_PATTERN.finditer(line):
-                yield url_match.group(0)
+                yield urlparse(url_match.group(0))
 
 
-def download_dump(args: tuple[int, Url]) -> Path | None:
+def download_dump(dump_url: ParseResult) -> Path:
     """Download compressed dump file."""
 
-    position, dump_url = args
-    filename = Path(urlparse(dump_url).path).name
-
+    filename = Path(dump_url.path).name
     return _write_with_progress(
         description=f'Downloading {filename}',
-        position=position,
-        input=lambda: urlopen(dump_url),
+        input=lambda: urlopen(dump_url.geturl()),
         input_size=lambda response: int(response.info().get('Content-Length', -1)),
         output=_DATA_DIR / filename,
     )
@@ -128,38 +90,35 @@ def _get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
         return None
 
 
-def extract_dump(args: tuple[int, Path]) -> Path | None:
+def extract_dump(dump_gz_path: Path) -> Path:
     """Uncompress downloaded dump file."""
-
-    position, dump_gz_path = args
     output = dump_gz_path.with_suffix('')
-
     return _write_with_progress(
         description=f'Extracting {output.name}',
-        position=position,
         input=lambda: gzip.open(dump_gz_path, 'rb'),
         input_size=lambda _: _get_gzip_uncompressed_size(dump_gz_path),
         output=output,
     )
 
 
-_GLOBAL_COUNTER = count()
+async def _get_dump(dump_url: ParseResult) -> Path | None:
+    try:
+        gzip_path = await asyncio.to_thread(download_dump, dump_url)
+        dump_path = await asyncio.to_thread(extract_dump, gzip_path)
+        return dump_path
+    except Exception:
+        return None
 
 
-def _global_enumerate[T](items: Iterable[T]) -> Iterator[tuple[int, T]]:
-    """Like enumerate, but indices are globally shared and never repeated."""
-    return zip(_GLOBAL_COUNTER, items, strict=False)
+async def _get_all_dumps(sources: Iterable[Path]) -> None:
+    async with asyncio.TaskGroup() as tg:
+        for source in sources:
+            for url in _get_dump_urls(source):
+                _ = tg.create_task(_get_dump(url))
 
 
 def main():
-    _ = _init_shared_tqdm_lock()
-
-    with Pool(initializer=_set_shared_tqdm, initargs=(tqdm,)) as pool:
-        urls = pool.imap_unordered(_get_dump_urls, _data_sources())
-        dumps = pool.imap_unordered(download_dump, _global_enumerate(chain.from_iterable(urls)))
-        results = pool.imap_unordered(extract_dump, _global_enumerate(dump for dump in dumps if dump))
-        for _ in results:
-            pass
+    asyncio.run(_get_all_dumps(_data_sources()))
 
 
 if __name__ == '__main__':
