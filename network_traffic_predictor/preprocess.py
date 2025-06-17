@@ -1,4 +1,6 @@
-"""Generate parquet file from raw PCAP data."""
+"""
+Generate parquet file from raw PCAP data.
+"""
 
 import os
 import socket
@@ -30,7 +32,9 @@ _PKT_SCHEMA: Final = pl.Schema({
 
 
 def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
-    """Transform a chunk of the PCAP file into structured data via Polars."""
+    """
+    Transform a chunk of the PCAP file into structured data via Polars.
+    """
     timestamps: list[int] = []
     source_ips: list[str] = []
     dest_ips: list[str] = []
@@ -104,23 +108,27 @@ def _process_pcap_parallel(pcap_path: Path, *, quiet: bool) -> pl.DataFrame:
 
 
 def _should_use_colors() -> bool:
-    """Checks if the environment supports colors and the user wants them."""
+    """
+    Checks if the environment supports colors and the user wants them.
+    """
     if os.environ.get('NO_COLOR'):
         return False
     return sys.stdout.isatty()
 
 
 def main() -> int:
-    """Generate parquet file from raw PCAP data."""
+    """
+    Generate parquet file from raw PCAP data.
+    """
     parser = ArgumentParser('process', description='Generate parquet file from raw PCAP data.')
-    _ = parser.add_argument('pcap_file', help='Raw file to be processed into structured parquet.')
+    _ = parser.add_argument('pcap_file', type=Path, help='Raw file to be processed into structured parquet.')
     _ = parser.add_argument('-q', '--quiet', action='store_true', help="Don't display progress.")
     _ = parser.add_argument('-c', '--color', action=BooleanOptionalAction, default=None, help='Display colored output.')
 
     args = parser.parse_intermixed_args()
 
     try:
-        pcap_file = Path(args.pcap_file)
+        pcap_file: Path = args.pcap_file
         output_file = pcap_file.parent / f'{pcap_file.stem}.parquet'
 
         enable_colors = bool(args.color) if args.color is not None else _should_use_colors()

@@ -1,4 +1,6 @@
-"""Download files listed in data sources."""
+"""
+Download files listed in data sources.
+"""
 
 import asyncio
 import glob
@@ -29,7 +31,9 @@ from tqdm import tqdm
 
 
 def _colormap_cycle(name: str) -> Iterator[str]:
-    """Get the colormap as a cycle."""
+    """
+    Get the colormap as a cycle.
+    """
     cmap = colormaps.get_cmap(name)
     colors = (to_hex(cmap(i)) for i in range(cmap.N))
     return cycle(colors)
@@ -39,7 +43,9 @@ _TAB10_COLORS = _colormap_cycle('tab10')
 
 
 def _should_use_colors() -> bool:
-    """Checks if the environment supports colors and the user wants them."""
+    """
+    Checks if the environment supports colors and the user wants them.
+    """
     if os.environ.get('NO_COLOR'):
         return False
     return sys.stdout.isatty()
@@ -60,7 +66,9 @@ def _write_output[T: IOBase](
     quiet: bool,
     enable_colors: bool,
 ) -> Path:
-    """Write input to output, updating a progress bar for the user when requested."""
+    """
+    Write input to output, updating a progress bar for the user when requested.
+    """
     progress = tqdm(
         desc=f'{operation} {output.name}',
         disable=quiet,
@@ -90,7 +98,9 @@ def _write_output[T: IOBase](
 
 
 def _download_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool, enable_colors: bool) -> Path:
-    """Download compressed dump file."""
+    """
+    Download compressed dump file.
+    """
     return _write_output(
         operation='Downloading',
         input=lambda: urlopen(dump_url.geturl()),
@@ -115,7 +125,9 @@ def _get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
 
 
 def _extract_dump(dump_gz_path: Path, *, quiet: bool, enable_colors: bool) -> Path:
-    """Uncompress downloaded dump file."""
+    """
+    Uncompress downloaded dump file.
+    """
     return _write_output(
         operation='Extracting',
         input=lambda: gzip.open(dump_gz_path, 'rb'),
@@ -127,7 +139,9 @@ def _extract_dump(dump_gz_path: Path, *, quiet: bool, enable_colors: bool) -> Pa
 
 
 def _process_single_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool, enable_colors: bool) -> Path:
-    """Download and extract a PCAP dump."""
+    """
+    Download and extract a PCAP dump.
+    """
     gzip_path = _download_dump(dump_url, output_dir, quiet=quiet, enable_colors=enable_colors)
     return _extract_dump(gzip_path, quiet=quiet, enable_colors=enable_colors)
 
@@ -139,7 +153,9 @@ _URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]
 
 
 def _resolve_data_sources(sources: Iterable[Path], *, recursive: bool = False) -> Iterator[Path]:
-    """Markdown files with download URLs in them."""
+    """
+    Markdown files with download URLs in them.
+    """
     for source in sources:
         if source.is_dir():
             for file in glob.iglob('*.md', root_dir=source, recursive=recursive):
@@ -149,7 +165,9 @@ def _resolve_data_sources(sources: Iterable[Path], *, recursive: bool = False) -
 
 
 def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
-    """List markdown files with download URLs in them."""
+    """
+    List markdown files with download URLs in them.
+    """
     with open(source_file) as file:
         for line in file:
             for url_match in _URL_PATTERN.finditer(line):
@@ -161,7 +179,9 @@ def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
 
 @asynccontextmanager
 async def _with_no_wait_task_group() -> AsyncIterator[asyncio.TaskGroup]:
-    """Create a task group that exits immediately on exceptions."""
+    """
+    Create a task group that exits immediately on exceptions.
+    """
     with ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         loop.set_default_executor(executor)
@@ -174,7 +194,9 @@ async def _with_no_wait_task_group() -> AsyncIterator[asyncio.TaskGroup]:
 
 
 async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool, enable_colors: bool = True) -> int:
-    """Download and extract all dump files from all sources listed."""
+    """
+    Download and extract all dump files from all sources listed.
+    """
     tasks: list[asyncio.Task[Path]] = []
 
     async with _with_no_wait_task_group() as task_group:
@@ -201,7 +223,9 @@ async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool, enable_col
 
 
 def main() -> int:
-    """Download and extract PCAP files from specified sources"""
+    """
+    Download and extract PCAP files from specified sources.
+    """
     parser = ArgumentParser('download', description='Download and extract PCAP files from specified sources.')
     _ = parser.add_argument('source', nargs='+', type=Path, help='File or directory to search for data urls.')
     _ = parser.add_argument('-r', '--recursive', action='store_true', help='Recurse into the SOURCE directories.')
