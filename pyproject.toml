@@ -45,7 +45,7 @@ classifiers = [
 [project.optional-dependencies]
 # All optional dependencies
 all = [
-  "network-traffic-predictor[download, preprocess]",
+  "network-traffic-predictor[download, preprocess, analysis]",
 ]
 # Script dependencies
 download = [
@@ -53,6 +53,9 @@ download = [
 ]
 preprocess = [
   "network-traffic-predictor[colored-traceback, pcap_parallel, polars]",
+]
+analysis = [
+  "network-traffic-predictor[colored-traceback, matplotlib, polars]",
 ]
 # Shared package versions
 colored-traceback = [
@@ -83,12 +86,14 @@ Source = "https://github.com/marmitar/MC833-Projeto3"
 [project.scripts]
 download = "network_traffic_predictor.download:main"
 preprocess = "network_traffic_predictor.preprocess:main"
+analysis = "network_traffic_predictor.analysis:main"
 
 [tool.uv]
 environments = [
   "sys_platform == 'linux'",
   "sys_platform == 'darwin'",
 ]
+override-dependencies = ["numpy >= 2.3.0, < 3"]
 
 [[tool.uv.index]]
 name = "rocm-rel-6.4"
@@ -115,7 +120,7 @@ dev = [
 ]
 # Anlyzing data files
 data = [
-  "bpython >= 0.25, < 1",
+  "bpython[jedi] >= 0.25, < 1",
   "parquet-tools >= 0.2.16, < 1",
 ]
 # Linters and formatters
@@ -131,7 +136,6 @@ test = [
 # Type checkers
 typing = [
   "pyright >= 1.1.402, < 2",
-  "mypy >= 1.16.0, < 2",
   "types-tqdm >= 4.67.0.20250516, < 5",
 ]
 # Replicating MAWI notebooks
