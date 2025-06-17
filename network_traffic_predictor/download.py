@@ -5,6 +5,7 @@ import glob
 import gzip
 import re
 import struct
+from argparse import ArgumentParser
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import AbstractContextManager
 from io import IOBase
@@ -14,9 +15,6 @@ from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
 from tqdm import tqdm
-
-# points to "${project_root}/data"
-_DATA_DIR: Final = Path(__file__).parent.resolve(strict=True)
 
 # URLs to extract from data sources
 _URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
@@ -51,29 +49,14 @@ def _write_with_progress[T: IOBase](
         progress.close()
 
 
-def _data_sources() -> Iterator[Path]:
-    """Markdown files with download URLs in them."""
-    for file in glob.iglob('*.md', root_dir=_DATA_DIR):
-        yield _DATA_DIR / file
-
-
-def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
-    """Markdown files with download URLs in them."""
-    with open(source_file) as file:
-        for line in file:
-            for url_match in _URL_PATTERN.finditer(line):
-                yield urlparse(url_match.group(0))
-
-
-def download_dump(dump_url: ParseResult) -> Path:
+def download_dump(dump_url: ParseResult, output_dir: Path) -> Path:
     """Download compressed dump file."""
-
     filename = Path(dump_url.path).name
     return _write_with_progress(
         description=f'Downloading {filename}',
         input=lambda: urlopen(dump_url.geturl()),
         input_size=lambda response: int(response.info().get('Content-Length', -1)),
-        output=_DATA_DIR / filename,
+        output=output_dir / filename,
     )
 
 
@@ -101,24 +84,53 @@ def extract_dump(dump_gz_path: Path) -> Path:
     )
 
 
-async def _get_dump(dump_url: ParseResult) -> Path | None:
-    try:
-        gzip_path = await asyncio.to_thread(download_dump, dump_url)
-        dump_path = await asyncio.to_thread(extract_dump, gzip_path)
-        return dump_path
-    except Exception:
-        return None
+def _resolve_data_sources(sources: Iterable[Path], *, recursive: bool = False) -> Iterator[Path]:
+    """Markdown files with download URLs in them."""
+    for source in sources:
+        if source.is_dir():
+            for file in glob.iglob('*.md', root_dir=source, recursive=recursive):
+                yield source / file
+        else:
+            yield source
+
+
+def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
+    """Markdown files with download URLs in them."""
+    with open(source_file) as file:
+        for line in file:
+            for url_match in _URL_PATTERN.finditer(line):
+                yield urlparse(url_match.group(0))
+
+
+async def _get_dump(dump_url: ParseResult, output_dir: Path) -> Path:
+    gzip_path = await asyncio.to_thread(download_dump, dump_url, output_dir)
+    dump_path = await asyncio.to_thread(extract_dump, gzip_path)
+    return dump_path
 
 
 async def _get_all_dumps(sources: Iterable[Path]) -> None:
+    tasks: list[asyncio.Task[Path]] = []
+
     async with asyncio.TaskGroup() as tg:
         for source in sources:
+            output_dir = source.parent
             for url in _get_dump_urls(source):
-                _ = tg.create_task(_get_dump(url))
+                task = tg.create_task(_get_dump(url, output_dir))
+                tasks.append(task)
+
+    for task in tasks:
+        _ = task.result()
 
 
 def main():
-    asyncio.run(_get_all_dumps(_data_sources()))
+    parser = ArgumentParser('download', description='Download and extract PCAP files from specified sources.')
+    _ = parser.add_argument('source', nargs='+', type=Path, help='File or directory to search for data urls.')
+    _ = parser.add_argument('-r', '--recursive', action='store_true', help='Recurse into the SOURCE directories.')
+
+    args = parser.parse_intermixed_args()
+
+    data_sources = _resolve_data_sources(args.source, recursive=args.recursive)
+    asyncio.run(_get_all_dumps(data_sources))
 
 
 if __name__ == '__main__':
