@@ -5,11 +5,10 @@ Download files listed in data sources.
 import asyncio
 import glob
 import gzip
-import os
 import re
 import struct
 import sys
-from argparse import ArgumentParser, BooleanOptionalAction
+from argparse import ArgumentParser
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager, asynccontextmanager
@@ -22,10 +21,11 @@ from typing import Final, Literal
 from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
-import colored_traceback
 from matplotlib import colormaps
 from matplotlib.colors import to_hex
 from tqdm import tqdm
+
+from network_traffic_predictor.utils import cli_colors
 
 # --- Colored Output ---
 
@@ -40,16 +40,6 @@ def _colormap_cycle(name: str) -> Iterator[str]:
 
 
 _TAB10_COLORS = _colormap_cycle('tab10')
-
-
-def _should_use_colors() -> bool:
-    """
-    Checks if the environment supports colors and the user wants them.
-    """
-    if os.environ.get('NO_COLOR'):
-        return False
-    return sys.stdout.isatty()
-
 
 _ = tqdm.get_lock()  # type: ignore[reportUnknownMemberType]
 
@@ -230,7 +220,7 @@ def main() -> int:
     _ = parser.add_argument('source', nargs='+', type=Path, help='File or directory to search for data urls.')
     _ = parser.add_argument('-r', '--recursive', action='store_true', help='Recurse into the SOURCE directories.')
     _ = parser.add_argument('-q', '--quiet', action='store_true', help="Don't display progress.")
-    _ = parser.add_argument('-c', '--color', action=BooleanOptionalAction, default=None, help='Display colored output.')
+    _ = cli_colors.add_color_option(parser)
 
     args = parser.parse_intermixed_args()
 
@@ -239,12 +229,8 @@ def main() -> int:
         print('No valid source files found.', file=sys.stderr)
         return 1
 
-    enable_colors = bool(args.color) if args.color is not None else _should_use_colors()
-    if enable_colors:
-        colored_traceback.add_hook()
-
     try:
-        return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet, enable_colors=enable_colors))
+        return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet, enable_colors=args.color))
     except KeyboardInterrupt:
         return SIGINT
 
