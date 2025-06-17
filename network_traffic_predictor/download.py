@@ -5,37 +5,40 @@ import glob
 import gzip
 import re
 import struct
+import sys
 from argparse import ArgumentParser
-from collections.abc import Callable, Iterable, Iterator
-from contextlib import AbstractContextManager
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager, asynccontextmanager
 from io import IOBase
 from pathlib import Path
-from typing import Final
+from signal import SIGINT
+from traceback import print_exception
+from typing import Final, Literal
 from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
 from tqdm import tqdm
 
-# URLs to extract from data sources
-_URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
+# --- Core I/O Operations ---
 
 
-def _write_with_progress[T: IOBase](
+def _write_output[T: IOBase](
     *,
-    description: str,
+    operation: Literal['Downloading', 'Extracting'],
     input: Callable[[], AbstractContextManager[T]],
     input_size: Callable[[T], int | None],
     output: Path,
-    chunk_size: int = 8192,
+    quiet: bool = False,
 ) -> Path:
-    """Write input to output, showing updating a progress bar for the user."""
-    progress = tqdm(desc=description, unit='bytes', unit_scale=True)
+    """Write input to output, updating a progress bar for the user when requested."""
+    progress = tqdm(desc=f'{operation} {output.name}', disable=quiet, unit='bytes', unit_scale=True)
     try:
         with input() as input_file, open(output, 'wb') as output_file:
-            file_size = input_size(input_file)
-            progress.reset(total=file_size)
+            progress.reset(total=input_size(input_file))
 
-            while chunk := input_file.read(chunk_size):
+            CHUNK_SIZE: Final = 4096
+            while chunk := input_file.read(CHUNK_SIZE):
                 _ = output_file.write(chunk)
                 _ = progress.update(len(chunk))
 
@@ -43,20 +46,20 @@ def _write_with_progress[T: IOBase](
     except Exception as error:
         progress.display(f'{error}')
         output.unlink(missing_ok=True)
-        raise
+        raise error
     finally:
         progress.refresh()
         progress.close()
 
 
-def download_dump(dump_url: ParseResult, output_dir: Path) -> Path:
+def _download_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool = False) -> Path:
     """Download compressed dump file."""
-    filename = Path(dump_url.path).name
-    return _write_with_progress(
-        description=f'Downloading {filename}',
+    return _write_output(
+        operation='Downloading',
         input=lambda: urlopen(dump_url.geturl()),
         input_size=lambda response: int(response.info().get('Content-Length', -1)),
-        output=output_dir / filename,
+        output=output_dir / Path(dump_url.path).name,
+        quiet=quiet,
     )
 
 
@@ -73,15 +76,27 @@ def _get_gzip_uncompressed_size(gzip_path: Path) -> int | None:
         return None
 
 
-def extract_dump(dump_gz_path: Path) -> Path:
+def _extract_dump(dump_gz_path: Path, *, quiet: bool = False) -> Path:
     """Uncompress downloaded dump file."""
-    output = dump_gz_path.with_suffix('')
-    return _write_with_progress(
-        description=f'Extracting {output.name}',
+    return _write_output(
+        operation='Extracting',
         input=lambda: gzip.open(dump_gz_path, 'rb'),
         input_size=lambda _: _get_gzip_uncompressed_size(dump_gz_path),
-        output=output,
+        output=dump_gz_path.with_suffix(''),
+        quiet=quiet,
     )
+
+
+def _process_single_dump(dump_url: ParseResult, output_dir: Path, *, quiet: bool = True) -> Path:
+    """Download and extract a PCAP dump."""
+    gzip_path = _download_dump(dump_url, output_dir, quiet=quiet)
+    return _extract_dump(gzip_path, quiet=quiet)
+
+
+# --- Data Source Parsing ---
+
+# URLs to extract from data sources
+_URL_PATTERN: Final = re.compile(r'\bhttp[s]?://([a-zA-Z0-9]+[.])+([a-zA-Z0-9_-]+[/])+[0-9]+\.dump\.gz\b')
 
 
 def _resolve_data_sources(sources: Iterable[Path], *, recursive: bool = False) -> Iterator[Path]:
@@ -95,43 +110,70 @@ def _resolve_data_sources(sources: Iterable[Path], *, recursive: bool = False) -
 
 
 def _get_dump_urls(source_file: Path) -> Iterator[ParseResult]:
-    """Markdown files with download URLs in them."""
+    """List markdown files with download URLs in them."""
     with open(source_file) as file:
         for line in file:
             for url_match in _URL_PATTERN.finditer(line):
                 yield urlparse(url_match.group(0))
 
 
-async def _get_dump(dump_url: ParseResult, output_dir: Path) -> Path:
-    gzip_path = await asyncio.to_thread(download_dump, dump_url, output_dir)
-    dump_path = await asyncio.to_thread(extract_dump, gzip_path)
-    return dump_path
+# --- Main Asynchronous Logic ---
 
 
-async def _get_all_dumps(sources: Iterable[Path]) -> None:
+@asynccontextmanager
+async def _with_no_wait_task_group() -> AsyncIterator[asyncio.TaskGroup]:
+    """Create a task group that exits immediately on exceptions."""
+    with ThreadPoolExecutor() as executor:
+        loop = asyncio.get_running_loop()
+        loop.set_default_executor(executor)
+
+        try:
+            async with asyncio.TaskGroup() as task_group:
+                yield task_group
+        finally:
+            executor.shutdown(wait=True, cancel_futures=False)
+
+
+async def _process_all_dumps(sources: Iterable[Path], *, quiet: bool = False) -> int:
+    """Download and extract all dump files from all sources listed."""
     tasks: list[asyncio.Task[Path]] = []
 
-    async with asyncio.TaskGroup() as tg:
+    async with _with_no_wait_task_group() as task_group:
         for source in sources:
             output_dir = source.parent
             for url in _get_dump_urls(source):
-                task = tg.create_task(_get_dump(url, output_dir))
-                tasks.append(task)
+                coro = asyncio.to_thread(_process_single_dump, url, output_dir, quiet=quiet)
+                tasks.append(task_group.create_task(coro))
 
+    error_count = 0
     for task in tasks:
-        _ = task.result()
+        if (error := task.exception()) is not None:
+            error_count += 1
+            if not quiet:
+                print_exception(error)
+
+    return -error_count
 
 
-def main():
+def main() -> int:
+    """Download and extract PCAP files from specified sources"""
     parser = ArgumentParser('download', description='Download and extract PCAP files from specified sources.')
     _ = parser.add_argument('source', nargs='+', type=Path, help='File or directory to search for data urls.')
     _ = parser.add_argument('-r', '--recursive', action='store_true', help='Recurse into the SOURCE directories.')
+    _ = parser.add_argument('-q', '--quiet', action='store_true', help="Don't display progress.")
 
     args = parser.parse_intermixed_args()
 
     data_sources = _resolve_data_sources(args.source, recursive=args.recursive)
-    asyncio.run(_get_all_dumps(data_sources))
+    if not data_sources:
+        print('No valid source files found.', file=sys.stderr)
+        return 1
+
+    try:
+        return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet))
+    except KeyboardInterrupt:
+        return SIGINT
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
