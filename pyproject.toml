@@ -45,13 +45,13 @@ classifiers = [
 [project.optional-dependencies]
 # All optional dependencies
 all = [
-  "network-traffic-predictor[download]", # TODO
+  "network-traffic-predictor[download,preprocess]",
 ]
 # Script dependencies
 download = [
   "network-traffic-predictor[colored-traceback,matplotlib,tqdm]",
 ]
-process = [
+preprocess = [
   "network-traffic-predictor[colored-traceback,pcap_parallel,polars]",
 ]
 # Extra selectors
@@ -85,7 +85,7 @@ Source = "https://github.com/marmitar/MC833-Projeto3"
 
 [project.scripts]
 download = "network_traffic_predictor.download:main"
-process = "network_traffic_predictor.process:main"
+preprocess = "network_traffic_predictor.preprocess:main"
 
 [tool.uv]
 environments = [

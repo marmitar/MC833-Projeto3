@@ -1,20 +1,20 @@
 """Generate parquet file from raw PCAP data."""
 
+import os
 import socket
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 from datetime import UTC
 from io import BytesIO
 from pathlib import Path
 from signal import SIGINT
 from typing import Final, Literal
+from warnings import warn
 
 import colored_traceback
 import dpkt
 import polars as pl
 from pcap_parallel import PCAPParallel
-
-colored_traceback.add_hook()
 
 # Polars schema for the final output
 _PKT_SCHEMA: Final = pl.Schema({
@@ -65,7 +65,8 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
                         source_ports.append(None)
                         dest_ports.append(None)
 
-        except (dpkt.dpkt.UnpackError, AttributeError):
+        except (dpkt.dpkt.UnpackError, AttributeError) as error:
+            warn(f'{error}', stacklevel=1)
             continue
 
     return pl.from_dict(
@@ -84,12 +85,13 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     )
 
 
-def _process_pcap_parallel(pcap_path: Path):
+def _process_pcap_parallel(pcap_path: Path, *, quiet: bool) -> pl.DataFrame:
     """
     Parses a PCAP file in parallel using the pcap-parallel library.
     WARNING: This loads the entire PCAP file into memory.
     """
-    print(f'Processing {pcap_path.name} with pcap-parallel...')
+    if not quiet:
+        print(f'Processing {pcap_path.name} with pcap-parallel...')
 
     ps = PCAPParallel(str(pcap_path), callback=_worker_process_chunk)
     return (
@@ -101,10 +103,19 @@ def _process_pcap_parallel(pcap_path: Path):
     )
 
 
+def _should_use_colors() -> bool:
+    """Checks if the environment supports colors and the user wants them."""
+    if os.environ.get('NO_COLOR'):
+        return False
+    return sys.stdout.isatty()
+
+
 def main() -> int:
     """Generate parquet file from raw PCAP data."""
     parser = ArgumentParser('process', description='Generate parquet file from raw PCAP data.')
     _ = parser.add_argument('pcap_file', help='Raw file to be processed into structured parquet.')
+    _ = parser.add_argument('-q', '--quiet', action='store_true', help="Don't display progress.")
+    _ = parser.add_argument('-c', '--color', action=BooleanOptionalAction, default=None, help='Display colored output.')
 
     args = parser.parse_intermixed_args()
 
@@ -112,7 +123,11 @@ def main() -> int:
         pcap_file = Path(args.pcap_file)
         output_file = pcap_file.parent / f'{pcap_file.stem}.parquet'
 
-        df = _process_pcap_parallel(pcap_file)
+        enable_colors = bool(args.color) if args.color is not None else _should_use_colors()
+        if enable_colors:
+            colored_traceback.add_hook()
+
+        df = _process_pcap_parallel(pcap_file, quiet=args.quiet)
         df.write_parquet(output_file)
         print(df)
 
