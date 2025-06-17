@@ -1,14 +1,20 @@
+"""Generate parquet file from raw PCAP data."""
+
 import socket
 import sys
+import traceback
+from argparse import ArgumentParser
 from datetime import UTC
 from io import BytesIO
 from pathlib import Path
+from signal import SIGINT
 from typing import Final, Literal
 
 import dpkt
 import polars as pl
 from pcap_parallel import PCAPParallel
 
+# Polars schema for the final output
 _PKT_SCHEMA: Final = pl.Schema({
     'Timestamp': pl.Datetime(time_unit='ns', time_zone=UTC),
     'Source IP': pl.String,
@@ -21,11 +27,8 @@ _PKT_SCHEMA: Final = pl.Schema({
 })
 
 
-def _seconds_to_nanos(timestamp: float) -> int:
-    return int(timestamp * 1e9)
-
-
 def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
+    """Transform a chunk of the PCAP file into structured data via Polars."""
     timestamps: list[int] = []
     source_ips: list[str] = []
     dest_ips: list[str] = []
@@ -40,7 +43,7 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
             eth = dpkt.ethernet.Ethernet(buf)
             if isinstance(eth.data, dpkt.ip.IP):
                 ip = eth.data
-                timestamps.append(_seconds_to_nanos(timestamp))
+                timestamps.append(int(timestamp * 1e9))
                 source_ips.append(socket.inet_ntoa(ip.src))
                 dest_ips.append(socket.inet_ntoa(ip.dst))
                 protocols.append(ip.p)
@@ -79,18 +82,14 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     )
 
 
-def process_pcap_parallel(pcap_path: Path):
+def _process_pcap_parallel(pcap_path: Path):
     """
     Parses a PCAP file in parallel using the pcap-parallel library.
     WARNING: This loads the entire PCAP file into memory.
     """
     print(f'Processing {pcap_path.name} with pcap-parallel...')
 
-    ps = PCAPParallel(
-        str(pcap_path),
-        callback=_worker_process_chunk,
-    )
-
+    ps = PCAPParallel(str(pcap_path), callback=_worker_process_chunk)
     return (
         pl.concat(future.result() for future in ps.split())
         .lazy()
@@ -100,14 +99,28 @@ def process_pcap_parallel(pcap_path: Path):
     )
 
 
+def main() -> int:
+    """Generate parquet file from raw PCAP data."""
+    parser = ArgumentParser('process', description='Generate parquet file from raw PCAP data.')
+    _ = parser.add_argument('pcap_file', help='Raw file to be processed into structured parquet.')
+
+    args = parser.parse_intermixed_args()
+
+    try:
+        pcap_file = Path(args.pcap_file)
+        output_file = pcap_file.parent / f'{pcap_file.stem}.parquet'
+
+        df = _process_pcap_parallel(pcap_file)
+        df.write_parquet(output_file)
+        print(df)
+
+        return 0
+    except KeyboardInterrupt:
+        return SIGINT
+    except Exception as error:
+        traceback.print_exception(error)
+        return 1
+
+
 if __name__ == '__main__':
-    pcap_file = Path('data/200701251400.dump')
-
-    if not pcap_file.exists():
-        print(f"Error: Input file '{pcap_file}' not found.")
-        print('Please decompress the .dump.gz file first.')
-        sys.exit(-1)
-
-    df = process_pcap_parallel(pcap_file)
-    df.write_parquet(Path(f'{pcap_file.stem}_parallel.parquet'))
-    print(df)
+    sys.exit(main())
