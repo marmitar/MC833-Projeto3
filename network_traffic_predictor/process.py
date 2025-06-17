@@ -2,7 +2,6 @@
 
 import socket
 import sys
-import traceback
 from argparse import ArgumentParser
 from datetime import UTC
 from io import BytesIO
@@ -10,9 +9,12 @@ from pathlib import Path
 from signal import SIGINT
 from typing import Final, Literal
 
+import colored_traceback
 import dpkt
 import polars as pl
 from pcap_parallel import PCAPParallel
+
+colored_traceback.add_hook()
 
 # Polars schema for the final output
 _PKT_SCHEMA: Final = pl.Schema({
@@ -117,9 +119,6 @@ def main() -> int:
         return 0
     except KeyboardInterrupt:
         return SIGINT
-    except Exception as error:
-        traceback.print_exception(error)
-        return 1
 
 
 if __name__ == '__main__':

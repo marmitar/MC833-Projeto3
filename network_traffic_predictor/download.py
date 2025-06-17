@@ -20,6 +20,7 @@ from typing import Final, Literal
 from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
+import colored_traceback
 from matplotlib import colormaps
 from matplotlib.colors import to_hex
 from tqdm import tqdm
@@ -60,8 +61,13 @@ def _write_output[T: IOBase](
     enable_colors: bool,
 ) -> Path:
     """Write input to output, updating a progress bar for the user when requested."""
-    color = next(_TAB10_COLORS) if enable_colors else None
-    progress = tqdm(desc=f'{operation} {output.name}', disable=quiet, colour=color, unit='bytes', unit_scale=True)
+    progress = tqdm(
+        desc=f'{operation} {output.name}',
+        disable=quiet,
+        colour=next(_TAB10_COLORS) if enable_colors else None,
+        unit='bytes',
+        unit_scale=True,
+    )
     try:
         with input() as input_file, open(output, 'wb') as output_file:
             progress.reset(total=input_size(input_file))
@@ -72,10 +78,12 @@ def _write_output[T: IOBase](
                 _ = progress.update(len(chunk))
 
         return output
+
     except Exception as error:
         progress.display(f'{error}')
         output.unlink(missing_ok=True)
         raise error
+
     finally:
         progress.refresh()
         progress.close()
@@ -208,6 +216,9 @@ def main() -> int:
         return 1
 
     enable_colors = bool(args.color) if args.color is not None else _should_use_colors()
+    if enable_colors:
+        colored_traceback.add_hook()
+
     try:
         return asyncio.run(_process_all_dumps(data_sources, quiet=args.quiet, enable_colors=enable_colors))
     except KeyboardInterrupt:
