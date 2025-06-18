@@ -93,7 +93,7 @@ def _time_series(traffic_per_sec: pl.DataFrame, basename: Path, *, log: IO[str])
     _ = plt.ylabel('Kibibytes por Segundo ', fontsize=12)
 
     fig.axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
+    # fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
     fig.autofmt_xdate()  # auto-rotate date labels
 
     output_path = basename.parent / f'{basename.stem}.time_series.png'
@@ -106,7 +106,7 @@ def _time_series_decomposition(traffic_per_sec: pl.DataFrame, basename: Path, *,
     """
     Decomposition of the time series using `statsmodel`.
     """
-    PERIOD: Final = 60
+    PERIOD: Final = 60 * 60
     print(f'Time series decomposition: assuming period of {PERIOD} seconds.', file=log)
     if len(traffic_per_sec) < 2 * PERIOD:
         print(f'Warning: Time series is too short for seasonal decomposition with period={PERIOD}. Skipping.', file=log)
@@ -125,7 +125,7 @@ def _time_series_decomposition(traffic_per_sec: pl.DataFrame, basename: Path, *,
 
     _ = fig.axes[-1].set_xlabel('Tempo')
     fig.axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-    fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
+    # fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
     fig.autofmt_xdate()  # auto-rotate date labels
     plt.tight_layout()
 
