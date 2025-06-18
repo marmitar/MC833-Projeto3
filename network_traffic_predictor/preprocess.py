@@ -23,6 +23,7 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     """
     Transform a chunk of the PCAP file into structured data via Polars.
     """
+    family: list[Literal['IPv4', 'IPv6']] = []
     timestamps: list[int] = []
     source_ips: list[str] = []
     dest_ips: list[str] = []
@@ -35,31 +36,39 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
     for timestamp, buf in dpkt.pcap.Reader(file_handle):
         try:
             eth = dpkt.ethernet.Ethernet(buf)
-            if isinstance(eth.data, dpkt.ip.IP):
-                ip = eth.data
-                timestamps.append(int(timestamp * 1e9))
-                source_ips.append(socket.inet_ntoa(ip.src))
-                dest_ips.append(socket.inet_ntoa(ip.dst))
-                protocols.append(ip.p)
-                sizes.append(len(buf))
-
-                match ip.data:
-                    case dpkt.tcp.TCP() as tcp:
-                        types.append('TCP')
-                        source_ports.append(tcp.sport)
-                        dest_ports.append(tcp.dport)
-                    case dpkt.udp.UDP() as udp:
-                        types.append('UDP')
-                        source_ports.append(udp.sport)
-                        dest_ports.append(udp.dport)
-                    case _:
-                        types.append('Outro')
-                        source_ports.append(None)
-                        dest_ports.append(None)
-
         except (dpkt.dpkt.UnpackError, AttributeError) as error:
             warn(f'{error}', stacklevel=1)
             continue
+
+        if isinstance(eth.data, dpkt.ip.IP):
+            address_family = socket.AF_INET
+            family.append('IPv4')
+        elif isinstance(eth.data, dpkt.ip6.IP6):
+            address_family = socket.AF_INET6
+            family.append('IPv6')
+        else:
+            continue
+
+        ip = eth.data
+        timestamps.append(int(timestamp * 1e9))
+        source_ips.append(socket.inet_ntop(address_family, ip.src))
+        dest_ips.append(socket.inet_ntop(address_family, ip.dst))
+        protocols.append(ip.p)
+        sizes.append(len(buf))
+
+        match ip.data:
+            case dpkt.tcp.TCP() as tcp:
+                types.append('TCP')
+                source_ports.append(tcp.sport)
+                dest_ports.append(tcp.dport)
+            case dpkt.udp.UDP() as udp:
+                types.append('UDP')
+                source_ports.append(udp.sport)
+                dest_ports.append(udp.dport)
+            case _:
+                types.append('Outro')
+                source_ports.append(None)
+                dest_ports.append(None)
 
     return pl.from_dict(
         {
@@ -71,6 +80,7 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
             'Source Port': source_ports,
             'Destination Port': dest_ports,
             'Type': types,
+            'IP Family': family,
         },
         schema=PACKET_WITHOUT_ID_SCHEMA,
         strict=True,

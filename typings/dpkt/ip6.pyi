@@ -30,6 +30,18 @@ class IP6(dpkt.Packet):
     def get_proto(cls, p):
         ...
 
+    @property
+    def src(self) -> bytes:
+        ...
+
+    @property
+    def dst(self) -> bytes:
+        ...
+
+    @property
+    def p(self) -> int:
+        ...
+
 
 
 class IP6ExtensionHeader(dpkt.Packet):

@@ -17,6 +17,7 @@ PACKET_WITHOUT_ID_SCHEMA: Final = pl.Schema({
     'Source Port': pl.UInt16,
     'Destination Port': pl.UInt16,
     'Type': pl.Enum(['TCP', 'UDP', 'Outro']),
+    'IP Family': pl.Enum(['IPv4', 'IPv6']),
 })
 
 # Schema used for the parquet files.
