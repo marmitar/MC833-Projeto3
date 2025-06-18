@@ -12,6 +12,7 @@ from signal import SIGINT
 from typing import IO, Final
 
 # pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import polars as pl
 import seaborn as sns
@@ -85,11 +86,15 @@ def _time_series(traffic_per_sec: pl.DataFrame, basename: Path, *, log: IO[str])
     """
     Simple time series plot.
     """
-    _ = plt.figure(figsize=(15, 6))
+    fig = plt.figure(figsize=(15, 6))
     _ = plt.plot(traffic_per_sec['Timestamp'], traffic_per_sec['bytes_per_second'] / 1024)
     _ = plt.title('Volume de Tráfego na Rede pelo Tempo', fontsize=16)
     _ = plt.xlabel('Tempo', fontsize=12)
     _ = plt.ylabel('Kibibytes por Segundo ', fontsize=12)
+
+    fig.axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
+    fig.autofmt_xdate()  # auto-rotate date labels
 
     output_path = basename.parent / f'{basename.stem}.time_series.png'
     plt.savefig(output_path, dpi=300)
@@ -117,7 +122,11 @@ def _time_series_decomposition(traffic_per_sec: pl.DataFrame, basename: Path, *,
     _ = fig.axes[1].set_ylabel('Tendência')
     _ = fig.axes[2].set_ylabel('Sazonal')
     _ = fig.axes[3].set_ylabel('Residual')
-    _ = fig.axes[3].set_xlabel('Tempo')
+
+    _ = fig.axes[-1].set_xlabel('Tempo')
+    fig.axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    fig.axes[-1].xaxis.set_major_locator(mdates.SecondLocator(bysecond=(0, 30)))
+    fig.autofmt_xdate()  # auto-rotate date labels
     plt.tight_layout()
 
     output_path = basename.parent / f'{basename.stem}.decomposition.png'
