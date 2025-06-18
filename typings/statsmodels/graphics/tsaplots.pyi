@@ -28,7 +28,7 @@ def plot_acf(
     auto_ylims: bool=False,
     bartlett_confint: bool=True,
     vlines_kwargs: dict[str, Any] | None=None,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> Figure:
     """
     Plot the autocorrelation function
@@ -151,7 +151,7 @@ def plot_pacf(
     title: str='Partial Autocorrelation',
     zero: bool=True,
     vlines_kwargs: dict[str, Any] | None=None,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> Figure:
     """
     Plot the partial autocorrelation function

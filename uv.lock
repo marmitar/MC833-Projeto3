@@ -837,6 +837,7 @@ dev = [
     { name = "pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pytest-cov", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "ruff", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "types-tensorflow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "types-tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 lint = [
@@ -856,6 +857,7 @@ test = [
 ]
 typing = [
     { name = "pyright", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "types-tensorflow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "types-tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 
@@ -893,6 +895,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4.0,<9" },
     { name = "pytest-cov", specifier = ">=6.2.1,<7" },
     { name = "ruff", specifier = ">=0.11.13,<1" },
+    { name = "types-tensorflow", specifier = ">=2.17.1,<3" },
     { name = "types-tqdm", specifier = ">=4.67.0.20250516,<5" },
 ]
 lint = [
@@ -912,6 +915,7 @@ test = [
 ]
 typing = [
     { name = "pyright", specifier = ">=1.1.402,<2" },
+    { name = "types-tensorflow", specifier = ">=2.17.1,<3" },
     { name = "types-tqdm", specifier = ">=4.67.0.20250516,<5" },
 ]
 
@@ -1806,6 +1810,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-protobuf"
+version = "6.30.2.20250516"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/6c/5cf088aaa3927d1cc39910f60f220f5ff573ab1a6485b2836e8b26beb58c/types_protobuf-6.30.2.20250516.tar.gz", hash = "sha256:aecd1881770a9bb225ede66872ef7f0da4505edd0b193108edd9892e48d49a41", size = 62254, upload-time = "2025-05-16T03:06:50.794Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/66/06a9c161f5dd5deb4f5c016ba29106a8f1903eb9a1ba77d407dd6588fecb/types_protobuf-6.30.2.20250516-py3-none-any.whl", hash = "sha256:8c226d05b5e8b2623111765fa32d6e648bbc24832b4c2fddf0fa340ba5d5b722", size = 76480, upload-time = "2025-05-16T03:06:49.444Z" },
+]
+
+[[package]]
 name = "types-requests"
 version = "2.32.4.20250611"
 source = { registry = "https://pypi.org/simple" }
@@ -1815,6 +1828,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6d/7f/73b3a04a53b0fd2a911d4ec517940ecd6600630b559e4505cc7b68beb5a0/types_requests-2.32.4.20250611.tar.gz", hash = "sha256:741c8777ed6425830bf51e54d6abe245f79b4dcb9019f1622b773463946bf826", size = 23118, upload-time = "2025-06-11T03:11:41.272Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3d/ea/0be9258c5a4fa1ba2300111aa5a0767ee6d18eb3fd20e91616c12082284d/types_requests-2.32.4.20250611-py3-none-any.whl", hash = "sha256:ad2fe5d3b0cb3c2c902c8815a70e7fb2302c4b8c1f77bdcd738192cdb3878072", size = 20643, upload-time = "2025-06-11T03:11:40.186Z" },
+]
+
+[[package]]
+name = "types-tensorflow"
+version = "2.18.0.20250516"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "types-protobuf", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "types-requests", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/18/b726d886e7af565c4439d2c8d32e510651be40807e2a66aaea2ed75d7c82/types_tensorflow-2.18.0.20250516.tar.gz", hash = "sha256:5777e1848e52b1f4a87b44ce1ec738b7407a744669bab87ec0f5f1e0ce6bd1fe", size = 257705, upload-time = "2025-05-16T03:09:41.222Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/fd/0d8fbc7172fa7cca345c61a949952df8906f6da161dfbb4305c670aeabad/types_tensorflow-2.18.0.20250516-py3-none-any.whl", hash = "sha256:e8681f8c2a60f87f562df1472790c1e930895e7e463c4c65d1be98d8d908e45e", size = 329211, upload-time = "2025-05-16T03:09:40.111Z" },
 ]
 
 [[package]]
