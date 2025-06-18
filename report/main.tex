@@ -1,0 +1,149 @@
+\documentclass{homework}
+
+\usepackage{pdfpages, float}
+\usepackage{wrapfig, graphicx}
+\usepackage{enumitem, subcaption}
+\usepackage{lmodern}
+\usepackage[strings]{underscore}
+\def\mathdefault#1{#1}
+
+% pacotes para importar código
+\usepackage{caption, booktabs, fancyvrb, makecell}
+\usepackage[inkscapepath=build/inkscape]{svg}
+\usepackage[section, newfloat]{minted}
+
+\definecolor{monokaibg}{HTML}{272822}
+\definecolor{monokaitext}{HTML}{F8F8F2}
+
+% https://github.com/gpoore/minted/issues/84
+\renewcommand{\FancyVerbFormatLine}[1]{\textcolor{monokaitext}{~#1}}
+
+\setminted{
+    bgcolor = monokaibg,
+    style   = monokai,
+    frame   = leftline,
+    framesep = 2mm,
+    autogobble,
+    samepage,
+    python3,
+    breaklines,
+    escapeinside=!!,
+}
+
+\setmintedinline{
+    autogobble=false,
+}
+
+\usepackage{csquotes}
+% \usepackage[
+%     style    = verbose-ibid,
+%     autocite = footnote,
+%     notetype = foot+end,
+%     backend  = biber
+% ]{biblatex}
+% \addbibresource{references.bib}
+\usepackage[section]{placeins}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage[noabbrev, nameinlink, brazilian]{cleveref}
+\hypersetup{
+    pdftitle  = {MC833 - Projeto 3 - RA187679},
+    pdfauthor = {Tiago de Paula}
+}
+
+% \captionsetup[listing]{position=below,skip=-1pt}
+\SetupFloatingEnvironment{listing}{name=Trecho de Código}
+\crefname{listing}{código}{códigos}
+\Crefname{listing}{Código}{Códigos}
+
+\crefname{appendix}{apêndice}{apêndices}
+\Crefname{appendix}{Apêndice}{Apêndices}
+
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{ghostbox}[1][]{
+    blank,
+    breakable,
+    left = 0pt,
+    right = 0pt,
+    top = 0pt,
+    bottom = 0pt,
+    #1
+}
+
+\usepackage{titlesec}
+
+\makeatletter
+\g@addto@macro\appendix{
+    \titleformat{\section}
+    {\normalfont\Large\bfseries}
+    {\appendixname~\thesection:}
+    {1em}{}
+
+    \crefalias{section}{appendix}
+}
+\makeatother
+
+\usepackage{import, multirow}
+\usepackage{pgf, tikz}
+\usetikzlibrary{matrix}
+\usetikzlibrary{positioning}
+\usetikzlibrary{automata}
+\usetikzlibrary{shapes}
+
+\usepackage{multicol}
+\usepackage{physics}
+
+\usepackage[per-mode = symbol]{siunitx}
+% recreate \qty
+\AtBeginDocument{\RenewCommandCopy\qty\SI}
+% ignore \qty warnings
+\ExplSyntaxOn
+\msg_redirect_name:nnn{siunitx}{physics-pkg}{none}
+\ExplSyntaxOff
+
+% bits and bytes per second
+\DeclareSIUnit{\bps}{\bit\per\second}
+\DeclareSIUnit{\Bps}{\byte\per\second}
+
+\newenvironment{kmatrix}[1][1.3cm]{
+    \begin{tikzpicture}[node distance=0cm]
+        \tikzset{square matrix/.style={
+                matrix of nodes,
+                column sep=-\pgflinewidth, row sep=-\pgflinewidth,
+                nodes={draw,
+                    minimum height=#1,
+                    anchor=center,
+                    text width=#1,
+                    align=center,
+                    inner sep=0pt
+                },
+            },
+            square matrix/.default=#1
+        }
+    }{
+    \end{tikzpicture}%
+}
+
+\title{
+    \vspace{-2\baselineskip}
+    Projeto 3: \\
+    {\Large Previsão de tráfego de rede com Redes Neurais Recorrentes}
+}
+
+\author{
+    Tiago de Paula Alves ~(187679) \\
+    \href{mailto:t187679@dac.unicamp.br}{\texttt{t187679@dac.unicamp.br}}%
+}
+
+\begin{document}
+\maketitle\thispagestyle{fancy}
+\vspace{-3em}
+
+\pagestyle{main}
+
+\section{Introdução}
+
+Este projeto tem como objetivo modelar tráfego em uma rede utilizando redes neurais recorrentes (LSTM).
+
+\end{document}
