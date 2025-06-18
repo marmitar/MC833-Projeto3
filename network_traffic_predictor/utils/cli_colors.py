@@ -7,7 +7,7 @@ from typing import Any, Final, Literal, LiteralString, final, get_args, override
 
 import colored_traceback
 
-__all__ = ['add_color_option']
+__all__ = ['ColorOutputAction', 'add_color_option']
 
 
 def _enable_colors(default: bool | None = None) -> bool:
@@ -74,6 +74,16 @@ def _color_output_option(option: ColorOutputOption | str | None) -> bool | AutoC
             raise ArgumentTypeError(f'invalid color option: {option}')
 
 
+def _set_colorer_traceback(enable: bool | AutoColorOutput) -> None:
+    """
+    Add or remove hook for colored taceback.
+    """
+    if enable:
+        colored_traceback.add_hook(always=True)
+    else:
+        sys.excepthook = sys.__excepthook__
+
+
 @final
 class ColorOutputAction(Action):
     """
@@ -109,6 +119,8 @@ class ColorOutputAction(Action):
             help=help,
         )
 
+        _set_colorer_traceback(default)
+
     @override
     def __call__(
         self,
@@ -138,8 +150,7 @@ class ColorOutputAction(Action):
                 return
 
         setattr(namespace, self.dest, enable_colors)
-        if enable_colors:
-            colored_traceback.add_hook()
+        _set_colorer_traceback(enable_colors)
 
     @override
     def format_usage(self) -> LiteralString:
