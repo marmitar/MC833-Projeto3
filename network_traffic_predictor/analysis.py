@@ -12,7 +12,10 @@ import matplotlib.pyplot as plt
 import polars as pl
 
 from network_traffic_predictor.utils import cli_colors
+from network_traffic_predictor.utils.plotting import set_theme
 from network_traffic_predictor.utils.schemas import PACKET_SCHEMA
+
+set_theme()
 
 
 def _generate_descriptive_stats(df: pl.DataFrame) -> pl.DataFrame:

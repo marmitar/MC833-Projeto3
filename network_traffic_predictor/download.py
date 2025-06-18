@@ -13,7 +13,6 @@ from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractContextManager, asynccontextmanager
 from io import IOBase
-from itertools import cycle
 from pathlib import Path
 from signal import SIGINT
 from traceback import print_exception
@@ -21,30 +20,16 @@ from typing import Final, Literal
 from urllib.parse import ParseResult, urlparse
 from urllib.request import urlopen
 
-from matplotlib import colormaps
-from matplotlib.colors import to_hex
 from tqdm import tqdm
 
 from network_traffic_predictor.utils import cli_colors
+from network_traffic_predictor.utils.plotting import colormap
 
-# --- Colored Output ---
-
-
-def _colormap_cycle(name: str) -> Iterator[str]:
-    """
-    Get the colormap as a cycle.
-    """
-    cmap = colormaps.get_cmap(name)
-    colors = (to_hex(cmap(i)) for i in range(cmap.N))
-    return cycle(colors)
-
-
-_TAB10_COLORS = _colormap_cycle('tab10')
+# --- Core I/O Operations ---
 
 _ = tqdm.get_lock()  # type: ignore[reportUnknownMemberType]
 
-
-# --- Core I/O Operations ---
+_TAB10_COLORS = colormap('tab10', cycle=True)
 
 
 def _write_output[T: IOBase](
