@@ -534,6 +534,18 @@ wheels = [
 ]
 
 [[package]]
+name = "jinja2"
+version = "3.1.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
+]
+
+[[package]]
 name = "jmespath"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -778,11 +790,23 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "dpkt", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pandas", extra = ["output-formatting", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pcap-parallel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "polars", extra = ["pandas"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "statsmodels", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+analysis = [
+    { name = "pandas", extra = ["output-formatting", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "polars", extra = ["pandas"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "statsmodels", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 download = [
     { name = "tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+pandas = [
+    { name = "pandas", extra = ["output-formatting", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "polars", extra = ["pandas"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 pcap-parallel = [
     { name = "dpkt", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -821,8 +845,7 @@ lint = [
 ]
 mawi = [
     { name = "ipykernel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "network-traffic-predictor", extra = ["statsmodels", "tensorflow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "pandas", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "network-traffic-predictor", extra = ["pandas", "statsmodels", "tensorflow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pip", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "scapy", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "scikit-learn", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -841,13 +864,15 @@ requires-dist = [
     { name = "colored-traceback", specifier = ">=0.4.2,<1" },
     { name = "dpkt", marker = "extra == 'pcap-parallel'", specifier = ">=1.9.8,<2" },
     { name = "matplotlib", specifier = ">=3.10.3,<4" },
-    { name = "network-traffic-predictor", marker = "extra == 'analysis'" },
     { name = "network-traffic-predictor", extras = ["download", "preprocess", "analysis"], marker = "extra == 'all'" },
+    { name = "network-traffic-predictor", extras = ["pandas", "statsmodels"], marker = "extra == 'analysis'" },
     { name = "network-traffic-predictor", extras = ["pcap-parallel"], marker = "extra == 'preprocess'" },
     { name = "network-traffic-predictor", extras = ["tqdm"], marker = "extra == 'download'" },
     { name = "numpy", specifier = ">=2.3.0,<3" },
+    { name = "pandas", extras = ["output-formatting", "pyarrow"], marker = "extra == 'pandas'", specifier = ">=2.3.0,<3" },
     { name = "pcap-parallel", marker = "extra == 'pcap-parallel'", specifier = ">=0.1,<0.2" },
     { name = "polars", extras = ["numpy", "pyarrow"], specifier = ">=1.30.0,<2" },
+    { name = "polars", extras = ["pandas"], marker = "extra == 'pandas'" },
     { name = "pyarrow", specifier = ">=20.0.0,<21" },
     { name = "pygments", specifier = ">=2.19.1,<3" },
     { name = "seaborn", specifier = ">=0.13.2,<1" },
@@ -855,7 +880,7 @@ requires-dist = [
     { name = "tensorflow-rocm", extras = ["and-cuda"], marker = "extra == 'tensorflow'", specifier = ">=2.17.1,<3", index = "https://repo.radeon.com/rocm/manylinux/rocm-rel-6.4" },
     { name = "tqdm", marker = "extra == 'tqdm'", specifier = ">=4.67.1,<5" },
 ]
-provides-extras = ["all", "download", "preprocess", "analysis", "pcap-parallel", "statsmodels", "tensorflow", "tqdm"]
+provides-extras = ["all", "download", "preprocess", "analysis", "pandas", "pcap-parallel", "statsmodels", "tensorflow", "tqdm"]
 
 [package.metadata.requires-dev]
 data = [
@@ -876,8 +901,7 @@ lint = [
 ]
 mawi = [
     { name = "ipykernel", specifier = ">=6.29.5,<7" },
-    { name = "network-traffic-predictor", extras = ["matplotlib", "statsmodels", "tensorflow"] },
-    { name = "pandas", specifier = ">=2.3.0,<3" },
+    { name = "network-traffic-predictor", extras = ["matplotlib", "pandas", "statsmodels", "tensorflow"] },
     { name = "pip", specifier = ">=25.1.1" },
     { name = "scapy", specifier = ">=2.6.1,<3" },
     { name = "scikit-learn", specifier = ">=1.7.0,<2" },
@@ -1093,6 +1117,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/0e/21eb48a3a34a7d4bac982afc2c4eb5ab09f2d988bdf29d92ba9ae8e90a79/pandas-2.3.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:6021910b086b3ca756755e86ddc64e0ddafd5e58e076c72cb1585162e5ad259b", size = 13212406, upload-time = "2025-06-05T03:26:55.992Z" },
 ]
 
+[package.optional-dependencies]
+output-formatting = [
+    { name = "jinja2", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "tabulate", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+pyarrow = [
+    { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+
 [[package]]
 name = "parquet-tools"
 version = "0.2.16"
@@ -1214,6 +1247,10 @@ wheels = [
 [package.optional-dependencies]
 numpy = [
     { name = "numpy", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+pandas = [
+    { name = "pandas", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 pyarrow = [
     { name = "pyarrow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },

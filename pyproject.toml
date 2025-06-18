@@ -64,9 +64,13 @@ preprocess = [
   "network-traffic-predictor[pcap_parallel]",
 ]
 analysis = [
-  "network-traffic-predictor",
+  "network-traffic-predictor[pandas, statsmodels]",
 ]
 # Shared package versions
+pandas = [
+  "pandas[output-formatting, pyarrow] >= 2.3.0, < 3",
+  "polars[pandas]",
+]
 pcap_parallel = [
   "dpkt >= 1.9.8, < 2",
   "pcap_parallel >= 0.1, < 0.2",
@@ -137,9 +141,8 @@ typing = [
 ]
 # Replicating MAWI notebooks
 mawi = [
-  "network-traffic-predictor[matplotlib, statsmodels, tensorflow]",
+  "network-traffic-predictor[matplotlib, pandas, statsmodels, tensorflow]",
   "ipykernel >= 6.29.5, < 7",
-  "pandas >= 2.3.0, < 3",
   "pip >= 25.1.1",
   "scapy >= 2.6.1, < 3",
   "scikit-learn >= 1.7.0, < 2",
