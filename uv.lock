@@ -793,6 +793,7 @@ all = [
     { name = "pandas", extra = ["output-formatting", "pyarrow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pcap-parallel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "polars", extra = ["pandas"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "scikit-learn", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "statsmodels", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "tensorflow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -817,6 +818,9 @@ preprocess = [
     { name = "dpkt", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pcap-parallel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
+sklearn = [
+    { name = "scikit-learn", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
 statsmodels = [
     { name = "statsmodels", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
@@ -827,6 +831,7 @@ tqdm = [
     { name = "tqdm", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 train = [
+    { name = "scikit-learn", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "tensorflow", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 
@@ -850,10 +855,9 @@ lint = [
 ]
 mawi = [
     { name = "ipykernel", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "network-traffic-predictor", extra = ["pandas", "statsmodels", "tensorflow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "network-traffic-predictor", extra = ["pandas", "sklearn", "statsmodels", "tensorflow"], marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "pip", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "scapy", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
-    { name = "scikit-learn", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
 ]
 test = [
     { name = "pytest", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -873,7 +877,7 @@ requires-dist = [
     { name = "network-traffic-predictor", extras = ["download", "preprocess", "analysis", "train"], marker = "extra == 'all'" },
     { name = "network-traffic-predictor", extras = ["pandas", "statsmodels"], marker = "extra == 'analysis'" },
     { name = "network-traffic-predictor", extras = ["pcap-parallel"], marker = "extra == 'preprocess'" },
-    { name = "network-traffic-predictor", extras = ["tensorflow"], marker = "extra == 'train'" },
+    { name = "network-traffic-predictor", extras = ["sklearn", "tensorflow"], marker = "extra == 'train'" },
     { name = "network-traffic-predictor", extras = ["tqdm"], marker = "extra == 'download'" },
     { name = "numpy", specifier = ">=2.3.0,<3" },
     { name = "pandas", extras = ["output-formatting", "pyarrow"], marker = "extra == 'pandas'", specifier = ">=2.3.0,<3" },
@@ -882,12 +886,13 @@ requires-dist = [
     { name = "polars", extras = ["pandas"], marker = "extra == 'pandas'" },
     { name = "pyarrow", specifier = ">=20.0.0,<21" },
     { name = "pygments", specifier = ">=2.19.1,<3" },
+    { name = "scikit-learn", marker = "extra == 'sklearn'", specifier = ">=1.7.0,<2" },
     { name = "seaborn", specifier = ">=0.13.2,<1" },
     { name = "statsmodels", marker = "extra == 'statsmodels'", specifier = ">=0.14.4,<1" },
     { name = "tensorflow", marker = "extra == 'tensorflow'", specifier = ">=2.18.1,<3" },
     { name = "tqdm", marker = "extra == 'tqdm'", specifier = ">=4.67.1,<5" },
 ]
-provides-extras = ["all", "download", "preprocess", "analysis", "train", "pandas", "pcap-parallel", "statsmodels", "tensorflow", "tqdm"]
+provides-extras = ["all", "download", "preprocess", "analysis", "train", "pandas", "pcap-parallel", "sklearn", "statsmodels", "tensorflow", "tqdm"]
 
 [package.metadata.requires-dev]
 data = [
@@ -909,10 +914,9 @@ lint = [
 ]
 mawi = [
     { name = "ipykernel", specifier = ">=6.29.5,<7" },
-    { name = "network-traffic-predictor", extras = ["matplotlib", "pandas", "statsmodels", "tensorflow"] },
+    { name = "network-traffic-predictor", extras = ["matplotlib", "pandas", "sklearn", "statsmodels", "tensorflow"] },
     { name = "pip", specifier = ">=25.1.1" },
     { name = "scapy", specifier = ">=2.6.1,<3" },
-    { name = "scikit-learn", specifier = ">=1.7.0,<2" },
 ]
 test = [
     { name = "pytest", specifier = ">=8.4.0,<9" },
