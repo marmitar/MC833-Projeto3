@@ -1,0 +1,35 @@
+\clearpage
+\appendix
+
+\section{Scripts de Coleta e Processamento}
+
+\begin{ghostbox}
+    \captionsetup{type=listing}
+    \inputminted[samepage=false]{python}{../network_traffic_predictor/download.py}
+    \caption{Script \texttt{download.py} para download e extração dos arquivos PCAP.}
+    \label{lst:script-download}
+\end{ghostbox}
+
+\begin{ghostbox}
+    \captionsetup{type=listing}
+    \inputminted[samepage=false]{python}{../network_traffic_predictor/preprocess.py}
+    \caption{Script \texttt{preprocess.py} para processamento paralelo do arquivo PCAP e geração do dataset
+    em formato Parquet.}
+    \label{lst:script-preprocess}
+\end{ghostbox}
+
+\section{Scripts de Análise e Treinamento}
+
+\begin{ghostbox}
+    \captionsetup{type=listing}
+    \inputminted[samepage=false]{python}{../network_traffic_predictor/analysis.py}
+    \caption{Script \texttt{analysis.py} para a Análise Exploratória dos Dados.}
+    \label{lst:script-analysis}
+\end{ghostbox}
+
+\begin{ghostbox}
+    \captionsetup{type=listing}
+    \inputminted[samepage=false]{python}{../network_traffic_predictor/train.py}
+    \caption{Script \texttt{train.py} para o treinamento e avaliação do modelo LSTM.}
+    \label{lst:script-train}
+\end{ghostbox}

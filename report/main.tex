@@ -35,13 +35,6 @@
 }
 
 \usepackage{csquotes}
-% \usepackage[
-%     style    = verbose-ibid,
-%     autocite = footnote,
-%     notetype = foot+end,
-%     backend  = biber
-% ]{biblatex}
-% \addbibresource{references.bib}
 \usepackage[section]{placeins}
 
 \usepackage[hidelinks]{hyperref}
@@ -106,25 +99,6 @@
 \DeclareSIUnit{\bps}{\bit\per\second}
 \DeclareSIUnit{\Bps}{\byte\per\second}
 
-\newenvironment{kmatrix}[1][1.3cm]{
-    \begin{tikzpicture}[node distance=0cm]
-        \tikzset{square matrix/.style={
-                matrix of nodes,
-                column sep=-\pgflinewidth, row sep=-\pgflinewidth,
-                nodes={draw,
-                    minimum height=#1,
-                    anchor=center,
-                    text width=#1,
-                    align=center,
-                    inner sep=0pt
-                },
-            },
-            square matrix/.default=#1
-        }
-    }{
-    \end{tikzpicture}%
-}
-
 \title{
     \vspace{-2\baselineskip}
     Projeto 3: \\
@@ -142,8 +116,7 @@
 
 \pagestyle{main}
 
-\section{Introdução}
-
-Este projeto tem como objetivo modelar tráfego em uma rede utilizando redes neurais recorrentes (LSTM).
+\input{text/01_intro}
+\input{text/X_appendix.tex}
 
 \end{document}
