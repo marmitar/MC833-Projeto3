@@ -5,11 +5,10 @@ Generate parquet file from raw PCAP data.
 import socket
 import sys
 from argparse import ArgumentParser
-from datetime import UTC
 from io import BytesIO
 from pathlib import Path
 from signal import SIGINT
-from typing import Final, Literal
+from typing import Literal
 from warnings import warn
 
 import dpkt
@@ -17,18 +16,7 @@ import polars as pl
 from pcap_parallel import PCAPParallel
 
 from network_traffic_predictor.utils import cli_colors
-
-# Polars schema for the final output
-_PKT_SCHEMA: Final = pl.Schema({
-    'Timestamp': pl.Datetime(time_unit='ns', time_zone=UTC),
-    'Source IP': pl.String,
-    'Destination IP': pl.String,
-    'Protocol': pl.UInt8,
-    'Size (bytes)': pl.UInt32,
-    'Source Port': pl.UInt16,
-    'Destination Port': pl.UInt16,
-    'Type': pl.Enum(['TCP', 'UDP', 'Outro']),
-})
+from network_traffic_predictor.utils.schemas import PACKET_WITHOUT_ID_SCHEMA
 
 
 def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
@@ -84,7 +72,7 @@ def _worker_process_chunk(file_handle: BytesIO) -> pl.DataFrame:
             'Destination Port': dest_ports,
             'Type': types,
         },
-        schema=_PKT_SCHEMA,
+        schema=PACKET_WITHOUT_ID_SCHEMA,
         strict=True,
     )
 
@@ -98,13 +86,8 @@ def _process_pcap_parallel(pcap_path: Path, *, quiet: bool) -> pl.DataFrame:
         print(f'Processing {pcap_path.name} with pcap-parallel...')
 
     ps = PCAPParallel(str(pcap_path), callback=_worker_process_chunk)
-    return (
-        pl.concat(future.result() for future in ps.split())
-        .lazy()
-        .with_row_index('Packet', offset=1)
-        .with_columns(pl.from_epoch('Timestamp', time_unit='s'))
-        .collect()
-    )
+    df = pl.concat(future.result() for future in ps.split())
+    return df.with_row_index('Packet', offset=1)
 
 
 def main() -> int:

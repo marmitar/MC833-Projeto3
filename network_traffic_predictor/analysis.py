@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import polars as pl
 
 from network_traffic_predictor.utils import cli_colors
+from network_traffic_predictor.utils.schemas import PACKET_SCHEMA
 
 
 def _generate_descriptive_stats(df: pl.DataFrame) -> pl.DataFrame:
@@ -20,9 +21,10 @@ def _generate_descriptive_stats(df: pl.DataFrame) -> pl.DataFrame:
     """
     print('Aggregating data to create bytes_per_second time series...')
     traffic_per_sec = (
-        df.group_by_dynamic('Timestamp', every='1s')
-        .agg(pl.col('Size (bytes)').sum())
-        .rename({'Size (bytes)': 'bytes_per_second'})
+        df.lazy()
+        .select('Timestamp', 'Size (bytes)')
+        .group_by_dynamic('Timestamp', every='1s')
+        .agg(bytes_per_second=pl.col('Size (bytes)').sum())
     )
 
     print('--- Descriptive Statistics for Bytes per Second ---')
@@ -35,8 +37,9 @@ def _create_protocol_histogram(df: pl.DataFrame, output_path: Path) -> None:
     """
     print(f'Generating protocol distribution histogram to {output_path}...')
 
-    df_tcp = df.filter(pl.col('Type') == 'TCP')['Size (bytes)']
-    df_udp = df.filter(pl.col('Type') == 'UDP')['Size (bytes)']
+    partitions = df.partition_by('Type', as_dict=True)
+    df_tcp = partitions[('TCP',)]['Size (bytes)']
+    df_udp = partitions[('UDP',)]['Size (bytes)']
 
     plt.style.use('seaborn-v0_8-whitegrid')
     _ = plt.figure(figsize=(12, 7))
@@ -86,7 +89,7 @@ def main() -> int:
     try:
         input_file: Path = args.parquet_file
         print(f'Analyzing {input_file.name}...')
-        df = pl.read_parquet(input_file)
+        df = pl.read_parquet(input_file, schema=PACKET_SCHEMA)
 
         # 1. descriptive statistics
         stats_df = _generate_descriptive_stats(df)
