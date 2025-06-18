@@ -51,12 +51,12 @@ def _create_sequences(data: np.ndarray, look_back: int) -> tuple[np.ndarray, np.
     """
     Creates sliding window sequences for the LSTM model.
     """
-    X: list[np.ndarray] = []
+    xx: list[np.ndarray] = []
     y: list[np.ndarray] = []
     for i in range(len(data) - look_back):
-        X.append(data[i : (i + look_back), 0])
+        xx.append(data[i : (i + look_back), 0])
         y.append(data[i + look_back, 0])
-    return np.array(X), np.array(y)
+    return np.array(xx), np.array(y)
 
 
 class _Results(TypedDict):
@@ -71,7 +71,7 @@ class _Results(TypedDict):
     test_predict_orig: np.ndarray
 
 
-def _train_and_evaluate_model(traffic_series: pl.Series, look_back: int, output_dir: Path) -> _Results:
+def _train_and_evaluate_model(traffic_series: pl.Series, look_back: int, epochs: int, batch_size: int) -> _Results:
     """
     Handles the full pipeline for a single look_back configuration:
     scaling, splitting, model building, training, and evaluation.
@@ -101,13 +101,7 @@ def _train_and_evaluate_model(traffic_series: pl.Series, look_back: int, output_
 
     # Training
     print(f'Training model for look_back={look_back}...')
-    _ = model.fit(
-        X_train,
-        y_train,
-        epochs=20,  # Hyperparameter to adjust
-        batch_size=32,  # Hyperparameter to adjust
-        verbose=0,
-    )
+    _ = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)
 
     # Evaluation
     test_predict_scaled = model.predict(X_test, verbose=0)
@@ -126,7 +120,7 @@ def _train_and_evaluate_model(traffic_series: pl.Series, look_back: int, output_
     }
 
 
-def _find_best_model(*, input_file: Path, output_dir: Path) -> None:
+def _find_best_model(*, input_file: Path, output_dir: Path, epochs: int, batch_size: int) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     basename = output_dir / input_file.name
 
@@ -135,11 +129,13 @@ def _find_best_model(*, input_file: Path, output_dir: Path) -> None:
 
     # --- Experiment Loop ---
     look_back_configs = (10, 20, 30)
-    results = [_train_and_evaluate_model(traffic_series, look_back, output_dir) for look_back in look_back_configs]
+    results = [
+        _train_and_evaluate_model(traffic_series, look_back, epochs, batch_size) for look_back in look_back_configs
+    ]
     best_model_info = min(results, key=lambda result: result['mse'])
 
     # --- Generate Final Report Assets ---
-    best_model_path = basename.parent / f'{basename.stem}.best_model.keras'
+    best_model_path = basename.parent / f'{basename.stem}.best_model.e{epochs}.b{batch_size}.keras'
     save_model(best_model_info['model'], best_model_path)
     print(f'Best model (look_back={best_model_info["look_back"]}) saved to {best_model_path}')
 
@@ -151,7 +147,7 @@ def _find_best_model(*, input_file: Path, output_dir: Path) -> None:
     print('--- MSE for Different Window Configurations ---')
     print(results_df)
     results_df.to_pandas().to_latex(
-        buf=basename.parent / f'{basename.stem}.mse_results.tex',
+        buf=basename.parent / f'{basename.stem}.mse_results.e{epochs}.b{batch_size}.tex',
         float_format='%.2f',
         caption='Mean Squared Error for Different Look-Back Windows',
         label='tab:mse_results',
@@ -159,17 +155,18 @@ def _find_best_model(*, input_file: Path, output_dir: Path) -> None:
 
     # Prediction plot
     _ = plt.figure(figsize=(18, 8))
-    _ = plt.plot(best_model_info['y_test_orig'], label='Actual Traffic (Bytes/s)', color='royalblue')
+    _ = plt.plot(best_model_info['y_test_orig'], label='Tráfego Real (Bytes/s)', color='royalblue')
     _ = plt.plot(
-        best_model_info['test_predict_orig'], label='LSTM Predicted Traffic (Bytes/s)', color='darkorange', alpha=0.9
+        best_model_info['test_predict_orig'], label='Tráfego Esperado (Bytes/s)', color='darkorange', alpha=0.9
     )
-    _ = plt.title(f'Real vs. Predicted Traffic (Best Model: look_back={best_model_info["look_back"]})', fontsize=16)
-    _ = plt.xlabel('Time Step (Seconds in Test Set)', fontsize=12)
-    _ = plt.ylabel('Bytes per Second', fontsize=12)
+    params = f'look_back={best_model_info["look_back"]}, {epochs=}, {batch_size=}'
+    _ = plt.title(rf'Tráfego Real vs. Modelado (Modelo: \texttt{{{params}}})', fontsize=16)
+    _ = plt.xlabel('Passo (Segundos)', fontsize=12)
+    _ = plt.ylabel('Bytes por Segundo', fontsize=12)
     _ = plt.legend(fontsize=12)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 
-    plot_path = basename.parent / f'{basename.stem}.prediction.png'
+    plot_path = basename.parent / f'{basename.stem}.prediction.e{epochs}.b{batch_size}.png'
     plt.savefig(plot_path, dpi=300)
     print(f'Prediction plot saved to {plot_path}')
     plt.close()
@@ -188,11 +185,18 @@ def main() -> int:
         default=Path('results'),
         help='Directory to save the model, plots, and results.',
     )
+    _ = parser.add_argument('-e', '--epochs', type=int, default=20, help='Number of epochs to run.')
+    _ = parser.add_argument('-b', '--batch-size', type=int, default=32, help='Number of samples per epoch.')
     _ = cli_colors.add_color_option(parser)
 
     args = parser.parse_args()
     try:
-        _find_best_model(input_file=args.parquet_file, output_dir=args.output_dir)
+        _find_best_model(
+            input_file=args.parquet_file,
+            output_dir=args.output_dir,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+        )
         return 0
     except KeyboardInterrupt:
         return SIGINT
