@@ -4,6 +4,7 @@ This script handles data preparation, model training, evaluation, and result gen
 """
 
 import os
+import random
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -28,10 +29,11 @@ from network_traffic_predictor.utils import cli_colors
 from network_traffic_predictor.utils.plotting import set_theme
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+set_theme()
+
+random.seed(0x80251BC46E68743C)
 np.random.seed(0x8A8EAB5A)
 set_seed(0x985E79749991772482D363C286ADBD2A)
-
-set_theme()
 
 
 def _extract_traffic_series(df: pl.DataFrame) -> pl.Series:
@@ -149,8 +151,8 @@ def _find_best_model(*, input_file: Path, output_dir: Path, epochs: int, batch_s
     results_df.to_pandas().to_latex(
         buf=basename.parent / f'{basename.stem}.mse_results.e{epochs}.b{batch_size}.tex',
         float_format='%.2f',
-        caption='Mean Squared Error for Different Look-Back Windows',
-        label='tab:mse_results',
+        index=False,
+        escape=True,
     )
 
     # Prediction plot
