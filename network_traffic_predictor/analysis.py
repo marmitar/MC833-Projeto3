@@ -45,7 +45,7 @@ def _descriptive_stats(traffic_per_sec: pl.DataFrame, basename: Path, *, log: IO
     Generates a bytes_per_second time series and calculates its descriptive statistics.
     """
     print('--- Descriptive Statistics for Bytes per Second ---', file=log)
-    stats = traffic_per_sec.select(kbps=pl.col('bytes_per_second') / 1024).describe()
+    stats = traffic_per_sec.select(bps=pl.col('bytes_per_second')).describe()
     print(stats, file=log)
     stats.to_pandas().to_latex(
         buf=basename.parent / f'{basename.stem}.describe.tex',
@@ -107,7 +107,7 @@ def _time_series_decomposition(traffic_per_sec: pl.DataFrame, basename: Path, *,
     """
     Decomposition of the time series using `statsmodel`.
     """
-    PERIOD: Final = 60
+    PERIOD: Final = 60 * 60
     print(f'Time series decomposition: assuming period of {PERIOD} seconds.', file=log)
     if len(traffic_per_sec) < 2 * PERIOD:
         print(f'Warning: Time series is too short for seasonal decomposition with period={PERIOD}. Skipping.', file=log)

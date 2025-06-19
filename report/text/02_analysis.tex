@@ -31,7 +31,7 @@ média. No entanto, podemos ver que essa instabilidade não aparece na série te
 \begin{figure}[!htb]
     \centering
     \includegraphics[width=0.95\textwidth]{resource/200701251400.time_series.png}
-    \caption{Série temporal do volume de tráfego agregado por segundo.}
+    \caption{Série temporal do volume de tráfego agregado por segundo de \texttt{200701251400.dump.gz}.}
     \label{fig:eda-timeseries}
 \end{figure}
 
@@ -45,14 +45,17 @@ estável. As quedas repentinas no início e no final são provavelmente artefato
     \centering
     \includegraphics[width=0.8\textwidth]{resource/200701251400.decomposition.png}
     \caption{Decomposição da série temporal em tendência, sazonalidade e resíduos, com um período sazonal de
-    60 segundos.}
+    60 segundos para o \emph{dataset} \texttt{200701251400.dump.gz}.}
     \label{fig:eda-decomposition}
 \end{figure}
 
-Para uma análise mais aprofundada, decompomos a série em seus componentes de tendência, sazonalidade e
-resíduos, como visto na .
-[... Adicione seus comentários sobre a tendência de longo prazo e os padrões periódicos (sazonais) que o
-modelo precisará aprender ...]
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.7\textwidth]{resource/200701251400.autocorrelation.png}
+    \caption{Funções de Autocorrelação (ACF) e Autocorrelação Parcial (PACF) para a série temporal de
+    \texttt{200701251400.dump.gz}.}
+    \label{fig:eda-acf-pacf}
+\end{figure}
 
 A análise de decomposição na \Cref{fig:eda-decomposition} fornece os insights mais profundos. A componente de
 tendência revela as alterações subjacentes e lentas no volume de tráfego. Podemos ver uma diminuição gradual
@@ -65,13 +68,6 @@ em segundo plano, ferramentas de monitoramento ou comportamentos agregados de us
 a minuto. Por fim, o componente residual mostra o ``ruído'' ou as flutuações aleatórias deixadas após a
 remoção da tendência e da sazonalidade.
 
-\begin{figure}[!htb]
-    \centering
-    \includegraphics[width=0.7\textwidth]{resource/200701251400.autocorrelation.png}
-    \caption{Funções de Autocorrelação (ACF) e Autocorrelação Parcial (PACF) para a série temporal.}
-    \label{fig:eda-acf-pacf}
-\end{figure}
-
 Por fim, os gráficos ACF e PACF na \Cref{fig:eda-acf-pacf} fornecem uma confirmação estatística dos padrões
 observados anteriormente.
 O gráfico da ACF mostra um decaimento muito lento. A correlação com valores passados permanece alta mesmo
@@ -83,3 +79,77 @@ indicando uma forte correlação direta com o valor imediatamente anterior. Em s
 drasticamente, tornando-se estatisticamente insignificante após cerca de 10 a 12 defasagens. Isso fornece uma
 forte justificativa estatística para experimentar uma janela look_back de 10, pois ela representa a memória
 de curto prazo mais significativa da série.
+
+\FloatBarrier
+\subsection{Aumentando a Quantidade de Pontos}
+
+Apesar do \emph{dataset} \texttt{200701251400.dump.gz} ser composto de mais de 19 milhões de pacotes, a
+distribuição se dá em apenas 15 minutos de coleta. Para um análise mais aprofundada, foi utilizado também um
+\emph{dataset} com 1515492 pacotes coletados em uma sessão de 9 horas, o \texttt{200701011800.dump.gz}.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Estatísticas descritivas para a série temporal do \texttt{200701011800.dump.gz}.}
+    \label{tab:eda-describe-2}
+    \input{resource/200701011800.describe.tex}
+\end{table}
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.95\textwidth]{resource/200701011800.protocol_dist.png}
+    \caption{Distribuição de tamanhos de pacote para os protocolos TCP e UDP em
+        \texttt{200701011800.dump.gz}. A frequência (eixo Y) está em
+    escala logarítmica para melhor visualização.}
+    \label{fig:eda-protocol-dist-2}
+\end{figure}
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.95\textwidth]{resource/200701011800.time_series.png}
+    \caption{Série temporal do volume de tráfego agregado por segundo em \texttt{200701011800.dump.gz}.}
+    \label{fig:eda-timeseries-2}
+\end{figure}
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.8\textwidth]{resource/200701011800.decomposition.png}
+    \caption{Decomposição da série temporal em tendência, sazonalidade e resíduos, com um período sazonal de
+    3600 segundos para o \emph{dataset} \texttt{200701011800.dump.gz}.}
+    \label{fig:eda-decomposition-2}
+\end{figure}
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.7\textwidth]{resource/200701011800.autocorrelation.png}
+    \caption{Funções de Autocorrelação (ACF) e Autocorrelação Parcial (PACF) para a série temporal de
+    \texttt{200701011800.dump.gz}.}
+    \label{fig:eda-acf-pacf-2}
+\end{figure}
+
+A análise deste novo conjunto de dados revela características de tráfego em uma escala de tempo muito mais
+ampla, que são fundamentais para um modelo de previsão robusto.
+
+A \Cref{tab:eda-describe-2} mostra que média de tráfego neste dataset mais longo é significativamente menor,
+em torno de 120.4 KiB/s, comparada com os 1.27 MiB/s do dataset anterior. Mais importante, o desvio padrão é
+quase o dobro da média. Isso indica que, ao longo de um dia, o tráfego não é apenas volátil, mas também
+apresenta regimes de operação muito distintos (períodos de alta e baixa atividade), em vez da aparente
+estabilidade do tráfego no dataset de 15 minutos.
+
+Apesar de conter muito ruído, o gráfico da \Cref{fig:eda-timeseries-2} é bem revelador. Ao contrário da série
+de 15 minutos, a captura de 9 horas mostra claramente padrões macroscópicos. Vemos períodos de baixa
+atividade (provavelmente durante a madrugada ou fora do horário comercial) e períodos de tráfego intenso e
+sustentado. Essa visão em escala maior é crucial, pois um modelo treinado apenas no período de alta atividade
+falharia em prever os períodos de baixa, e vice-versa.
+
+Sobre a decomposição na \Cref{fig:eda-decomposition-2}, a componente de tendência agora mostra um padrão
+diário muito claro, com o tráfego começando baixo, aumentando para um pico e depois diminuindo. Com um
+período de uma hora (3600 segundos), a componente sazonal é muito mais pronunciada e regular do que a
+sazonalidade de 60 segundos observada no dataset menor. Isso sugere que, além dos padrões minuto a minuto,
+existem padrões de comportamento que se repetem a cada hora.
+
+O decaimento da autocorrelação na \Cref{fig:eda-acf-pacf-2} é ainda mais lento do que antes, o que é esperado
+para uma série com uma tendência diária tão forte. Já o gráfico da PACF agora mostra uma história diferente.
+Além do forte pico no \emph{lag} 1, vemos outros picos menores e significativos em lags maiores. Isso indica
+que, para prever o tráfego, o modelo pode se beneficiar de olhar para o passado em diferentes escalas de
+tempo (o último minuto, a última hora, etc.), reforçando a importância de testar janelas de
+\texttt{look_back} maiores e mais variadas.
