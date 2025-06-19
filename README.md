@@ -83,10 +83,3 @@ uv run ruff format
 ```sh
 pre-commit run -a
 ```
-
-## Disclaimer
-
-This repository contains the implementation for Practical Assignment 3 of the MC833 - Computer Network Programming
-course at UNICAMP.
-
-More details on [project description](docs/description.md) and [working with LSTM](docs/lstm.md).
