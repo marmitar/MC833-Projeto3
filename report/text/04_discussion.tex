@@ -1,0 +1,40 @@
+\clearpage
+\section{Discussão Crítica}
+
+A análise dos resultados revela um comportamento dual do modelo LSTM, que varia drasticamente com a natureza
+do \emph{dataset} utilizado.
+
+No \emph{dataset} de 15 minutos, que exibe um tráfego relativamente estável, o modelo foi capaz de aprender a
+tendência geral e a sazonalidade de 60 segundos identificada na EDA. A previsão, embora mais suave que os
+dados reais, seguiu a trajetória da série. Isso demonstra a capacidade da arquitetura LSTM de capturar
+padrões de curto e médio prazo quando o comportamento da rede não apresenta variações extremas.
+
+Em contraste, no \emph{dataset} de 9 horas, o desempenho do modelo foi paradoxal. Por um lado, ele se tornou
+um preditor extremamente preciso da linha de base do tráfego. Os valores de MSE foram ordens de magnitude
+menores, pois o modelo aprendeu a prever com exatidão os longos períodos de baixa atividade. Por outro lado,
+ele falhou completamente em antecipar os \emph{bursts} de tráfego súbitos e de alta magnitude. O modelo
+tratou esses picos como ruído imprevisível, mantendo sua previsão próxima da média histórica e não
+conseguindo se adaptar a esses eventos de "cisne negro".
+
+Essa limitação é uma consequência direta da simplicidade da arquitetura do modelo. Uma única camada LSTM,
+embora eficaz para padrões regulares, não possui a capacidade de modelar a natureza inerentemente "ruidosa" e
+multifacetada do tráfego de internet, que é influenciado por uma infinidade de fatores, como o controle de
+congestionamento do TCP, a agregação de milhares de fluxos independentes e eventos externos imprevisíveis.
+
+\subsection{Conclusão}
+
+Em síntese, o projeto demonstrou com sucesso a viabilidade de utilizar uma arquitetura LSTM simples para
+modelar e prever o volume de tráfego de rede. A análise exploratória foi fundamental para guiar a seleção de
+hiperparâmetros, como a janela de \emph{look-back}, e para interpretar o comportamento do modelo.
+
+A principal vantagem da abordagem foi a capacidade do modelo de aprender tendências e padrões sazonais de
+longo prazo, resultando em uma previsão muito precisa da linha de base do tráfego. No entanto, sua principal
+limitação foi a incapacidade de prever os \emph{bursts} de curta duração, que são de grande importância para
+aplicações como detecção de anomalias ou planejamento de capacidade em tempo real.
+
+Para trabalhos futuros, a performance poderia ser aprimorada com a exploração de arquiteturas mais complexas.
+Modelos com múltiplas camadas LSTM, LSTMs bidirecionais, ou a incorporação de mecanismos de atenção poderiam
+capacitar o modelo a aprender relações temporais mais sofisticadas. Além disso, a engenharia de
+\emph{features}, incluindo variáveis como a distribuição de protocolos por segundo ou a hora do dia como uma
+entrada explícita, poderia fornecer ao modelo um contexto mais rico, melhorando sua capacidade de prever os
+picos de tráfego e tornando-o uma ferramenta mais robusta e prática para o gerenciamento de redes.
