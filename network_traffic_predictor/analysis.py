@@ -45,10 +45,11 @@ def _descriptive_stats(traffic_per_sec: pl.DataFrame, basename: Path, *, log: IO
     Generates a bytes_per_second time series and calculates its descriptive statistics.
     """
     print('--- Descriptive Statistics for Bytes per Second ---', file=log)
-    stats = traffic_per_sec.select('bytes_per_second').describe()
+    stats = traffic_per_sec.select(kbps=pl.col('bytes_per_second') / 1024).describe()
     print(stats, file=log)
     stats.to_pandas().to_latex(
         buf=basename.parent / f'{basename.stem}.describe.tex',
+        float_format='%.1f',
         index=False,
         escape=True,
     )
@@ -61,9 +62,9 @@ def _protocol_histogram(df: pl.DataFrame, basename: Path, *, log: IO[str]) -> No
     _ = plt.figure(figsize=(12, 7))
 
     _ = sns.displot(
-        df.select('Size (bytes)', 'Type').to_pandas(),
+        df.select('Size (bytes)', Tipo='Type').filter(pl.col('Size (bytes)') <= 100).to_pandas(),
         x='Size (bytes)',
-        hue='Type',
+        hue='Tipo',
         kind='hist',
         discrete=True,
         binwidth=1,
@@ -106,7 +107,7 @@ def _time_series_decomposition(traffic_per_sec: pl.DataFrame, basename: Path, *,
     """
     Decomposition of the time series using `statsmodel`.
     """
-    PERIOD: Final = 60 * 60
+    PERIOD: Final = 60
     print(f'Time series decomposition: assuming period of {PERIOD} seconds.', file=log)
     if len(traffic_per_sec) < 2 * PERIOD:
         print(f'Warning: Time series is too short for seasonal decomposition with period={PERIOD}. Skipping.', file=log)
