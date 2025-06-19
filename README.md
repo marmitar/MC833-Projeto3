@@ -1,5 +1,7 @@
 # Network Traffic Prediction with LSTM
 
+See [report.pdf](docs/report.pdf).
+
 ## Project Overview
 
 This project aims to predict network traffic volume using a Long Short-Term Memory (LSTM) Recurrent Neural Network. The
@@ -25,18 +27,62 @@ analysis of the results.
 ### Install dependencies:
 
 ```sh
+uv sync --all-extras
+```
+
+### Download and preprocess the dataset:
+
+```sh
+uv run data/download.py data/
+```
+
+```sh
+uv run data/preprocess.py data/200701251400.dump
+```
+
+### Run the analysis:
+
+```sh
+uv run data/analysis.py data/200701251400.parquet
+```
+
+### Train the LSTM
+
+```sh
+uv run data/train.py data/200701251400.parquet
+```
+
+## Development
+
+### Install dev tools
+
+```sh
 uv sync --all-extras --all-groups
 ```
 
-### Download the dataset:
-
 ```sh
-uv run data/download.py
+pre-commit install
 ```
 
-### Run the analysis and training scripts:
+### Linting
 
-...
+```sh
+uv run ruff check --fix
+```
+
+```sh
+uv run pyright
+```
+
+### Formatting
+
+```sh
+uv run ruff format
+```
+
+```sh
+pre-commit run -a
+```
 
 ## Disclaimer
 
