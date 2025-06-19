@@ -130,7 +130,7 @@ def _find_best_model(*, input_file: Path, output_dir: Path, epochs: int, batch_s
     traffic_series = _extract_traffic_series(df)
 
     # --- Experiment Loop ---
-    look_back_configs = (10, 20, 30)
+    look_back_configs = (10, 20, 30, 60)
     results = [
         _train_and_evaluate_model(traffic_series, look_back, epochs, batch_size) for look_back in look_back_configs
     ]
@@ -150,6 +150,7 @@ def _find_best_model(*, input_file: Path, output_dir: Path, epochs: int, batch_s
     print(results_df)
     results_df.to_pandas().to_latex(
         buf=basename.parent / f'{basename.stem}.mse_results.e{epochs}.b{batch_size}.tex',
+        column_format='cc',
         float_format='%.2f',
         index=False,
         escape=True,
